@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · FHS · BevChain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#E9ECF2;--surface:#FFFFFF;--surface-2:#F4F6FA;--ink:#0F1A2E;--navy:#15234A;--navy-2:#1E2761;
+  --red:#D62828;--red-deep:#9B1B1B;--amber:#E65100;--green:#0E8A5F;--line:#D7DDE8;--muted:#64708A;--ice:#CADCFC;
+  --shadow:0 1px 2px rgba(15,26,46,.06),0 8px 24px rgba(15,26,46,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:"IBM Plex Sans Thai",sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px}
+.mono{font-family:"IBM Plex Mono",monospace;letter-spacing:.02em}
+.hazard{height:6px;background:repeating-linear-gradient(135deg,var(--amber) 0 14px,var(--ink) 14px 28px)}
+.topbar{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:30}
+.logo{display:flex;align-items:center;gap:10px}
+.logo svg{width:30px;height:30px}
+.logo b{font-family:"Bai Jamjuree";font-weight:700;font-size:15px;line-height:1.1}
+.logo span{display:block;font-size:10.5px;color:var(--ice);font-weight:500;letter-spacing:.04em}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:12px;color:var(--ice)}
+.topbar .right a{color:#fff;cursor:pointer;font-weight:600}
+.wrap{max-width:980px;margin:0 auto;padding:22px 18px 60px}
+
+label{display:block;font-size:13px;font-weight:600;color:var(--navy);margin:0 0 6px}
+.field{margin-bottom:14px}
+input,textarea,select{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-size:14.5px;background:var(--surface);color:var(--ink)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--navy-2);box-shadow:0 0 0 3px rgba(30,39,97,.12)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border:none;border-radius:10px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;font-family:"Bai Jamjuree";transition:filter .15s,transform .08s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--navy);color:#fff}.btn-primary:hover{filter:brightness(1.13)}
+.btn-red{background:var(--red);color:#fff}
+.btn-ghost{background:var(--surface);color:var(--navy);border:1.5px solid var(--line)}
+.btn-sm{padding:7px 13px;font-size:13px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* tabs */
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:5px;margin-bottom:20px;overflow-x:auto;box-shadow:var(--shadow)}
+.tab{flex:1;padding:11px 14px;border:none;background:none;font:inherit;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer;border-radius:8px;white-space:nowrap;font-family:"Bai Jamjuree"}
+.tab.on{background:var(--navy);color:#fff}
+
+.page{display:none}.page.on{display:block}
+.page-head{display:flex;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.page-head h2{font-family:"Bai Jamjuree";font-weight:700;font-size:20px;color:var(--navy)}
+.page-head .btn{margin-left:auto}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.row{display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row .av{width:42px;height:42px;border-radius:10px;background:var(--surface-2);display:grid;place-items:center;flex:none;font-family:"Bai Jamjuree";font-weight:700;color:var(--navy)}
+.row .av.fire{background:rgba(214,40,40,.1)}
+.row .main{flex:1;min-width:0}
+.row .main b{font-size:14.5px;font-weight:600;display:block}
+.row .main .meta{font-size:12px;color:var(--muted);margin-top:1px}
+.row .actions{display:flex;gap:6px}
+.icbtn{width:34px;height:34px;border:1.5px solid var(--line);background:var(--surface);border-radius:9px;cursor:pointer;display:grid;place-items:center;color:var(--muted)}
+.icbtn:hover{border-color:var(--navy-2);color:var(--navy-2)}
+.icbtn.danger:hover{border-color:var(--red);color:var(--red)}
+.badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-block}
+.badge.green{background:rgba(14,138,95,.13);color:var(--green)}
+.badge.red{background:rgba(214,40,40,.1);color:var(--red)}
+.badge.navy{background:rgba(30,39,97,.1);color:var(--navy-2)}
+.badge.amber{background:rgba(230,81,0,.13);color:var(--amber)}
+
+/* modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(15,26,46,.55);z-index:50;padding:20px;overflow-y:auto;align-items:flex-start;justify-content:center}
+.modal.on{display:flex}
+.modal-box{background:var(--surface);border-radius:16px;max-width:540px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:up .25s ease}
+@keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.modal-h{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+.modal-h h3{font-family:"Bai Jamjuree";font-weight:700;font-size:17px;color:var(--navy)}
+.modal-h .x{margin-left:auto;width:32px;height:32px;border:none;background:var(--surface-2);border-radius:8px;cursor:pointer;font-size:16px;color:var(--muted)}
+.modal-b{padding:20px;max-height:65vh;overflow-y:auto}
+.modal-f{padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.eq-edit{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.eq-edit input[type=text]{padding:8px 10px;font-size:13px}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--amber);white-space:nowrap;cursor:pointer}
+.chk input{width:auto}
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
+.alert{padding:11px 14px;border-radius:10px;font-size:13px;font-weight:500;margin-bottom:14px}
+.alert.err{background:rgba(214,40,40,.08);color:var(--red-deep);border:1px solid rgba(214,40,40,.25)}
+.alert.ok{background:rgba(14,138,95,.1);color:var(--green);border:1px solid rgba(14,138,95,.25)}
+.alert.info{background:rgba(30,39,97,.07);color:var(--navy-2);border:1px solid rgba(30,39,97,.18)}
+.hint{font-size:12px;color:var(--muted);margin-top:5px}
+
+/* login gate */
+#gate{position:fixed;inset:0;background:var(--bg);z-index:100;display:grid;place-items:center;padding:20px}
+#gate .box{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:30px;max-width:380px;width:100%}
+#gate h1{font-family:"Bai Jamjuree";font-weight:700;font-size:20px;color:var(--navy);text-align:center;margin-bottom:4px}
+#gate p{text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px}
+.spinner{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* QR cards */
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.qr-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+.qr-card .qbox{background:#fff;padding:10px;border-radius:8px;display:inline-block;margin-bottom:10px}
+.qr-card .qid{font-family:"IBM Plex Mono";font-weight:600;font-size:13px;color:var(--navy)}
+.qr-card .qnm{font-size:12px;color:var(--muted);margin-top:2px}
+.qr-card label.sel{display:flex;align-items:center;gap:6px;justify-content:center;margin-top:10px;font-size:12px;cursor:pointer}
+.qr-card label.sel input{width:auto}
+
+/* print labels */
+.print-area{display:none}
+@media print{
+  body *{visibility:hidden}
+  .hazard,.topbar,.wrap{display:none!important}
+  .print-area,.print-area *{visibility:visible}
+  .print-area{display:block;position:absolute;top:0;left:0;width:100%}
+  .label-sheet{display:grid;grid-template-columns:repeat(2,1fr);gap:0}
+  .label{border:1px dashed #999;padding:18px;text-align:center;page-break-inside:avoid;height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .label .hz{height:8px;width:100%;background:repeating-linear-gradient(135deg,#E65100 0 12px,#0F1A2E 12px 24px);margin-bottom:14px}
+  .label .brand{font-family:"Bai Jamjuree";font-weight:700;font-size:13px;color:#15234A;letter-spacing:.05em}
+  .label .qimg{margin:12px 0}
+  .label .lid{font-family:"IBM Plex Mono";font-weight:600;font-size:16px;margin-top:6px}
+  .label .lnm{font-size:13px;color:#333;margin-top:3px}
+  .label .scan{font-size:11px;color:#666;margin-top:8px;font-weight:600}
+}
+</style>
+</head>
+<body>
+<div class="hazard"></div>
+
+<!-- LOGIN GATE -->
+<div id="gate">
+  <div class="box">
+    <div style="text-align:center;margin-bottom:16px"><svg width="48" height="48" viewBox="0 0 64 64" fill="none"><path d="M32 6l22 8v16c0 14-9 23-22 28C19 53 10 44 10 30V14l22-8z" fill="#1E2761"/><circle cx="32" cy="27" r="6" fill="#CADCFC"/><path d="M22 42c0-5.5 4.5-9 10-9s10 3.5 10 9" fill="#CADCFC"/></svg></div>
+    <h1>Admin · FHS</h1>
+    <p>เฉพาะผู้ดูแลระบบ</p>
+    <div id="gateAlert"></div>
+    <div class="field"><label>รหัสพนักงาน</label><input type="text" id="gId" class="mono" style="text-transform:uppercase" placeholder="EMP-1001"></div>
+    <div class="field"><label>รหัสผ่าน</label><input type="password" id="gPw" placeholder="••••••••"></div>
+    <button class="btn btn-primary" style="width:100%" id="gBtn">เข้าสู่ระบบ</button>
+    <p class="hint" style="text-align:center;margin-top:14px">ยังไม่มีผู้ใช้? <a id="seedLink" style="color:var(--navy-2);cursor:pointer;font-weight:600">สร้าง admin คนแรก</a></p>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="7" fill="#1E2761"/><path d="M16 6c-3 4-5 6-5 9.5A5 5 0 0 0 16 20a5 5 0 0 0 5-4.5C21 12 19 10 16 6z" fill="#D62828"/><rect x="9" y="23" width="14" height="2.4" rx="1.2" fill="#CADCFC"/></svg>
+    <div><b>FHS Admin</b><span>SECURITY &amp; COMPLIANCE</span></div>
+  </div>
+  <div class="right"><span id="adminName"></span><a href="index.html">แอปตรวจ ↗</a><a id="logout">ออกระบบ</a></div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on" data-tab="stations">🏭 สถานี</button>
+    <button class="tab" data-tab="users">👤 ผู้ใช้</button>
+    <button class="tab" data-tab="cameras">🎥 กล้อง CCTV</button>
+    <button class="tab" data-tab="qr">⬛ QR &amp; พิมพ์</button>
+  </div>
+
+  <!-- STATIONS -->
+  <div class="page on" id="page-stations">
+    <div class="page-head"><h2>สถานีหัวดับเพลิง</h2><button class="btn btn-primary" id="addStation">+ เพิ่มสถานี</button></div>
+    <div class="card" id="stationList"><div class="empty">กำลังโหลด…</div></div>
+  </div>
+
+  <!-- USERS -->
+  <div class="page" id="page-users">
+    <div class="page-head"><h2>ผู้ใช้งาน</h2><button class="btn btn-primary" id="addUser">+ เพิ่มผู้ใช้</button></div>
+    <div class="card" id="userList"><div class="empty">กำลังโหลด…</div></div>
+  </div>
+
+  <!-- CAMERAS -->
+  <div class="page" id="page-cameras">
+    <div class="page-head"><h2>กล้อง CCTV</h2><button class="btn btn-primary" id="addCamera">+ เพิ่มกล้อง</button></div>
+    <div class="card" id="cameraList"><div class="empty">กำลังโหลด…</div></div>
+  </div>
+
+  <!-- QR -->
+  <div class="page" id="page-qr">
+    <div class="page-head"><h2>QR Code สถานี</h2>
+      <button class="btn btn-ghost btn-sm" id="selectAll">เลือกทั้งหมด</button>
+      <button class="btn btn-primary btn-sm" id="printSel">🖨 พิมพ์ที่เลือก</button>
+    </div>
+    <div class="alert info">QR แต่ละอันลิงก์ไปยังแอปตรวจพร้อมรหัสสถานี — สแกนด้วยกล้องมือถือเปิดฟอร์มได้เลย ฉลากพิมพ์ 2 ดวง/หน้า A4</div>
+    <div class="field" style="max-width:520px"><label>URL แอปตรวจ (ปลายทางของ QR)</label><input type="text" id="inspectUrl" class="mono"></div>
+    <div class="qr-grid" id="qrGrid"><div class="empty">ยังไม่มีสถานี</div></div>
+  </div>
+</div>
+
+<!-- STATION MODAL -->
+<div class="modal" id="stationModal"><div class="modal-box">
+  <div class="modal-h"><h3 id="smTitle">เพิ่มสถานี</h3><button class="x" data-close>✕</button></div>
+  <div class="modal-b">
+    <div id="smAlert"></div>
+    <div class="two">
+      <div class="field"><label>รหัสสถานี <span style="color:var(--red)">*</span></label><input type="text" id="smId" class="mono" style="text-transform:uppercase" placeholder="FHS-LLKDC-001"></div>
+      <div class="field"><label>ไซต์ <span style="color:var(--red)">*</span></label><input type="text" id="smSite" placeholder="LLKDC" list="siteList"><datalist id="siteList"><option>LLKDC</option><option>NDC</option><option>Wangnoi</option></datalist></div>
+    </div>
+    <div class="field"><label>ชื่อสถานี</label><input type="text" id="smName" placeholder="สถานีดับเพลิง โซน A"></div>
+    <div class="field"><label>ตำแหน่ง/จุดติดตั้ง</label><input type="text" id="smLoc" placeholder="โซน A ใกล้ประตู 3"></div>
+    <div class="two">
+      <div class="field"><label>พิกัด Latitude</label><input type="number" id="smLat" step="any" placeholder="14.1234"></div>
+      <div class="field"><label>พิกัด Longitude</label><input type="number" id="smLng" step="any" placeholder="100.5678"></div>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="smGps" style="margin-bottom:14px">📍 ใช้ตำแหน่งปัจจุบัน</button>
+    <div class="field"><label>กล้อง CCTV ที่ครอบคลุม</label><select id="smCams" multiple size="3" style="height:auto"></select><p class="hint">กด Ctrl/Cmd ค้างเพื่อเลือกหลายตัว</p></div>
+    <div class="two">
+      <div class="field"><label>ความถี่การตรวจ (ทุกกี่วัน)</label><input type="number" id="smFreq" min="1" placeholder="เช่น 7" value="7"></div>
+      <div class="field"><label>ผู้รับผิดชอบ</label><select id="smAssignee"><option value="">— ไม่ระบุ —</option></select></div>
+    </div>
+    <label style="margin-top:6px">อุปกรณ์ในสถานี (รายชิ้น)</label>
+    <div id="smEquip"></div>
+    <button class="btn btn-ghost btn-sm" id="smAddEq" style="margin-top:4px">+ เพิ่มอุปกรณ์</button>
+  </div>
+  <div class="modal-f"><button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" id="smSave">บันทึก</button></div>
+</div></div>
+
+<!-- USER MODAL -->
+<div class="modal" id="userModal"><div class="modal-box">
+  <div class="modal-h"><h3 id="umTitle">เพิ่มผู้ใช้</h3><button class="x" data-close>✕</button></div>
+  <div class="modal-b">
+    <div id="umAlert"></div>
+    <div class="two">
+      <div class="field"><label>รหัสพนักงาน <span style="color:var(--red)">*</span></label><input type="text" id="umId" class="mono" style="text-transform:uppercase" placeholder="EMP-1023"></div>
+      <div class="field"><label>ชื่อ <span style="color:var(--red)">*</span></label><input type="text" id="umName" placeholder="MADARA"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>บทบาท</label><select id="umRole"><option value="inspector">Inspector (ตรวจ)</option><option value="admin">Admin (ดูแลระบบ)</option><option value="viewer">Viewer (ดูอย่างเดียว)</option></select></div>
+      <div class="field"><label>ไซต์</label><input type="text" id="umSite" placeholder="LLKDC" list="siteList"></div>
+    </div>
+    <div class="field" style="margin-bottom:0"><label>รหัสผ่าน <span style="color:var(--red)">*</span></label><input type="text" id="umPw" placeholder="ตั้งรหัสผ่าน"><p class="hint" id="umPwHint">เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัส (โหมดแก้ไข)</p></div>
+  </div>
+  <div class="modal-f"><button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" id="umSave">บันทึก</button></div>
+</div></div>
+
+<!-- CAMERA MODAL -->
+<div class="modal" id="cameraModal"><div class="modal-box">
+  <div class="modal-h"><h3 id="cmTitle">เพิ่มกล้อง</h3><button class="x" data-close>✕</button></div>
+  <div class="modal-b">
+    <div id="cmAlert"></div>
+    <div class="field"><label>รหัสกล้อง <span style="color:var(--red)">*</span></label><input type="text" id="cmId" class="mono" style="text-transform:uppercase" placeholder="CAM-12"></div>
+    <div class="field"><label>ชื่อ/ตำแหน่งกล้อง</label><input type="text" id="cmName" placeholder="กล้องโซน A ทางเดิน"></div>
+    <div class="field" style="margin-bottom:0"><label>จุดติดตั้ง</label><input type="text" id="cmLoc" placeholder="เพดานโซน A"></div>
+  </div>
+  <div class="modal-f"><button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" id="cmSave">บันทึก</button></div>
+</div></div>
+
+<div class="print-area"><div class="label-sheet" id="labelSheet"></div></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+/* ====== CONFIG — ใช้ค่าเดียวกับ index.html ====== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBusmdWb1BuElcAgZ8IC4-bwUW0p8X0ifg",
+  authDomain: "bevchain-fhs.firebaseapp.com",
+  projectId: "bevchain-fhs",
+  storageBucket: "bevchain-fhs.firebasestorage.app",
+  messagingSenderId: "568964415233",
+  appId: "1:568964415233:web:4be7220d2d14644fbce500"
+};
+/* ================================================ */
+
+const app=initializeApp(FIREBASE_CONFIG); const db=getFirestore(app);
+const $=id=>document.getElementById(id);
+const esc=s=>{const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;};
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+function randSalt(){return [...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');}
+
+let STATIONS=[], USERS=[], CAMERAS=[], ADMIN=null, editStationId=null, editUserId=null, editCameraId=null;
+
+/* ===== LOGIN GATE ===== */
+async function gateLogin(){
+  const id=$('gId').value.trim().toUpperCase(), pw=$('gPw').value, a=$('gateAlert'); a.innerHTML='';
+  if(!id||!pw){a.innerHTML='<div class="alert err">กรอกข้อมูลให้ครบ</div>';return;}
+  const btn=$('gBtn');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    const snap=await getDoc(doc(db,'users',id));
+    if(!snap.exists())throw new Error('ไม่พบผู้ใช้');
+    const u=snap.data();
+    if(u.role!=='admin')throw new Error('บัญชีนี้ไม่มีสิทธิ์ Admin');
+    if((await sha256((u.salt||'')+pw))!==u.passwordHash)throw new Error('รหัสผ่านไม่ถูกต้อง');
+    ADMIN={id,name:u.name||id}; sessionStorage.setItem('fhs_admin',JSON.stringify(ADMIN));
+    bootApp();
+  }catch(e){a.innerHTML=`<div class="alert err">${esc(e.message)}</div>`;}
+  finally{btn.disabled=false;btn.textContent='เข้าสู่ระบบ';}
+}
+async function seedAdmin(){
+  const exist=await getDocs(collection(db,'users'));
+  if(!exist.empty){alert('มีผู้ใช้ในระบบแล้ว ไม่สามารถสร้าง admin เริ่มต้นได้ — โปรด login');return;}
+  const id=prompt('รหัสพนักงาน admin (เช่น EMP-1001):'); if(!id)return;
+  const name=prompt('ชื่อ:')||id;
+  const pw=prompt('ตั้งรหัสผ่าน:'); if(!pw)return;
+  const salt=randSalt();
+  await setDoc(doc(db,'users',id.trim().toUpperCase()),{userId:id.trim().toUpperCase(),name,passwordHash:await sha256(salt+pw),salt,role:'admin',site:'',active:true,failedAttempts:0,lockedUntil:null,createdAt:serverTimestamp()});
+  alert('สร้าง admin สำเร็จ! เข้าสู่ระบบได้เลย');
+}
+function bootApp(){
+  $('gate').style.display='none';
+  $('adminName').textContent=ADMIN.name;
+  $('inspectUrl').value=location.href.replace(/admin\.html.*$/,'index.html');
+  loadAll();
+}
+
+/* ===== LOAD ===== */
+async function loadAll(){ await Promise.all([loadStations(),loadUsers(),loadCameras()]); }
+async function loadStations(){ const s=await getDocs(collection(db,'stations')); STATIONS=s.docs.map(d=>({id:d.id,...d.data()})); renderStations(); renderQR(); }
+async function loadUsers(){ const s=await getDocs(collection(db,'users')); USERS=s.docs.map(d=>({id:d.id,...d.data()})); renderUsers(); }
+async function loadCameras(){ const s=await getDocs(collection(db,'cctvCameras')); CAMERAS=s.docs.map(d=>({id:d.id,...d.data()})); renderCameras(); }
+
+/* ===== RENDER STATIONS ===== */
+function renderStations(){
+  const el=$('stationList');
+  if(!STATIONS.length){el.innerHTML='<div class="empty">ยังไม่มีสถานี — กด “เพิ่มสถานี”</div>';return;}
+  el.innerHTML=STATIONS.sort((a,b)=>a.id.localeCompare(b.id)).map(s=>{
+    const eqN=(s.equipment||[]).length, brass=(s.equipment||[]).filter(e=>e.isBrass).length;
+    return `<div class="row">
+      <div class="av fire"><svg width="20" height="20" viewBox="0 0 24 24" fill="#D62828"><path d="M12 2C9 6 7 8 7 11.5A5 5 0 0 0 12 16a5 5 0 0 0 5-4.5C17 8 15 6 12 2z"/></svg></div>
+      <div class="main"><b>${esc(s.id)} <span class="badge navy">${esc(s.site||'-')}</span></b>
+        <div class="meta">${esc(s.name||'')} ${s.location?'· '+esc(s.location):''} · อุปกรณ์ ${eqN} ชิ้น${brass?` (ทองเหลือง ${brass})`:''} ${(s.cctvCameras||[]).length?'· 🎥 '+s.cctvCameras.map(esc).join(','):''}</div>
+      </div>
+      <div class="actions">
+        <button class="icbtn" data-edit-station="${esc(s.id)}" title="แก้ไข"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
+        <button class="icbtn danger" data-del-station="${esc(s.id)}" title="ลบ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+      </div></div>`;
+  }).join('');
+  el.querySelectorAll('[data-edit-station]').forEach(b=>b.onclick=()=>openStation(b.dataset.editStation));
+  el.querySelectorAll('[data-del-station]').forEach(b=>b.onclick=()=>delStation(b.dataset.delStation));
+}
+
+/* ===== STATION MODAL ===== */
+function openStation(id){
+  editStationId=id||null;
+  $('smTitle').textContent=id?'แก้ไขสถานี':'เพิ่มสถานี'; $('smAlert').innerHTML='';
+  // camera options
+  $('smCams').innerHTML=CAMERAS.map(c=>`<option value="${esc(c.id)}">${esc(c.id)} — ${esc(c.name||'')}</option>`).join('');
+  // assignee options (inspectors + admins)
+  $('smAssignee').innerHTML='<option value="">— ไม่ระบุ —</option>'+USERS.filter(u=>['inspector','admin'].includes(u.role)).map(u=>`<option value="${esc(u.id)}">${esc(u.name||u.id)} (${esc(u.id)})</option>`).join('');
+  const s=id?STATIONS.find(x=>x.id===id):null;
+  $('smId').value=s?s.id:''; $('smId').disabled=!!id;
+  $('smSite').value=s?.site||''; $('smName').value=s?.name||''; $('smLoc').value=s?.location||'';
+  $('smLat').value=s?.gps?.lat??''; $('smLng').value=s?.gps?.lng??'';
+  $('smFreq').value=s?.inspectionFrequencyDays??7; $('smAssignee').value=s?.assignedTo||'';
+  [...$('smCams').options].forEach(o=>o.selected=(s?.cctvCameras||[]).includes(o.value));
+  $('smEquip').innerHTML=''; (s?.equipment||[]).forEach(addEqRow);
+  if(!s||!(s.equipment||[]).length){ addEqRow({name:'หัวฉีดทองเหลือง',type:'หัวฉีด',isBrass:true}); addEqRow({name:'สายดับเพลิง',type:'สาย'}); }
+  $('stationModal').classList.add('on');
+}
+function addEqRow(e={}){
+  const div=document.createElement('div'); div.className='eq-edit';
+  div.innerHTML=`<input type="text" class="eqn" placeholder="ชื่ออุปกรณ์" value="${esc(e.name||'')}" style="flex:2">
+    <input type="text" class="eqt" placeholder="ประเภท" value="${esc(e.type||'')}" style="flex:1">
+    <label class="chk"><input type="checkbox" class="eqb" ${e.isBrass?'checked':''}>ทองเหลือง</label>
+    <button class="icbtn danger" style="flex:none" title="ลบ"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+  div.dataset.eqid=e.id||('eq-'+Math.random().toString(36).slice(2,8));
+  div.querySelector('.icbtn').onclick=()=>div.remove();
+  $('smEquip').appendChild(div);
+}
+async function saveStation(){
+  const id=$('smId').value.trim().toUpperCase(), site=$('smSite').value.trim(), a=$('smAlert');
+  if(!id||!site){a.innerHTML='<div class="alert err">กรอกรหัสสถานีและไซต์</div>';return;}
+  if(!editStationId && STATIONS.some(s=>s.id===id)){a.innerHTML='<div class="alert err">มีรหัสสถานีนี้แล้ว</div>';return;}
+  const equipment=[...$('smEquip').querySelectorAll('.eq-edit')].map(r=>{
+    const name=r.querySelector('.eqn').value.trim(); if(!name)return null;
+    const old=editStationId?(STATIONS.find(s=>s.id===editStationId)?.equipment||[]).find(e=>e.id===r.dataset.eqid):null;
+    return {id:r.dataset.eqid,name,type:r.querySelector('.eqt').value.trim(),isBrass:r.querySelector('.eqb').checked,
+      status:old?.status||'present',lastSeenAt:old?.lastSeenAt||null,lastSeenBy:old?.lastSeenBy||null};
+  }).filter(Boolean);
+  const cams=[...$('smCams').selectedOptions].map(o=>o.value);
+  const assignee=$('smAssignee').value;
+  const assigneeName=assignee?(USERS.find(u=>u.id===assignee)?.name||assignee):'';
+  const data={stationId:id,site,name:$('smName').value.trim(),location:$('smLoc').value.trim(),
+    gps:($('smLat').value&&$('smLng').value)?{lat:parseFloat($('smLat').value),lng:parseFloat($('smLng').value)}:null,
+    cctvCameras:cams,equipment,status:'active',
+    inspectionFrequencyDays:parseInt($('smFreq').value)||7, assignedTo:assignee, assignedToName:assigneeName};
+  const btn=$('smSave');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    if(editStationId) await updateDoc(doc(db,'stations',id),data);
+    else await setDoc(doc(db,'stations',id),{...data,createdAt:serverTimestamp()});
+    $('stationModal').classList.remove('on'); await loadStations();
+  }catch(e){a.innerHTML=`<div class="alert err">${esc(e.message)}</div>`;}
+  finally{btn.disabled=false;btn.textContent='บันทึก';}
+}
+async function delStation(id){ if(!confirm(`ลบสถานี ${id}?\n(ประวัติการตรวจที่บันทึกไว้จะยังคงอยู่)`))return; await deleteDoc(doc(db,'stations',id)); await loadStations(); }
+
+/* ===== USERS ===== */
+function renderUsers(){
+  const el=$('userList');
+  if(!USERS.length){el.innerHTML='<div class="empty">ยังไม่มีผู้ใช้</div>';return;}
+  const rc={admin:'red',inspector:'navy',viewer:'amber'};
+  el.innerHTML=USERS.sort((a,b)=>a.id.localeCompare(b.id)).map(u=>`<div class="row">
+    <div class="av">${esc((u.name||u.id).slice(0,2).toUpperCase())}</div>
+    <div class="main"><b>${esc(u.name||u.id)} ${u.active===false?'<span class="badge red">ระงับ</span>':''}</b>
+      <div class="meta"><span class="mono">${esc(u.id)}</span> · <span class="badge ${rc[u.role]||'navy'}">${esc(u.role||'inspector')}</span> · ${esc(u.site||'-')}</div></div>
+    <div class="actions">
+      <button class="icbtn" data-edit-user="${esc(u.id)}" title="แก้ไข"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
+      <button class="icbtn danger" data-del-user="${esc(u.id)}" title="ลบ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+    </div></div>`).join('');
+  el.querySelectorAll('[data-edit-user]').forEach(b=>b.onclick=()=>openUser(b.dataset.editUser));
+  el.querySelectorAll('[data-del-user]').forEach(b=>b.onclick=()=>delUser(b.dataset.delUser));
+}
+function openUser(id){
+  editUserId=id||null; $('umTitle').textContent=id?'แก้ไขผู้ใช้':'เพิ่มผู้ใช้'; $('umAlert').innerHTML='';
+  const u=id?USERS.find(x=>x.id===id):null;
+  $('umId').value=u?u.id:''; $('umId').disabled=!!id;
+  $('umName').value=u?.name||''; $('umRole').value=u?.role||'inspector'; $('umSite').value=u?.site||''; $('umPw').value='';
+  $('umPwHint').style.display=id?'block':'none';
+  $('userModal').classList.add('on');
+}
+async function saveUser(){
+  const id=$('umId').value.trim().toUpperCase(), name=$('umName').value.trim(), pw=$('umPw').value, a=$('umAlert');
+  if(!id||!name){a.innerHTML='<div class="alert err">กรอกรหัสและชื่อ</div>';return;}
+  if(!editUserId && !pw){a.innerHTML='<div class="alert err">ตั้งรหัสผ่าน</div>';return;}
+  if(!editUserId && USERS.some(u=>u.id===id)){a.innerHTML='<div class="alert err">มีรหัสนี้แล้ว</div>';return;}
+  const btn=$('umSave');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    const base={userId:id,name,role:$('umRole').value,site:$('umSite').value.trim(),active:true};
+    if(pw){ const salt=randSalt(); base.salt=salt; base.passwordHash=await sha256(salt+pw); base.failedAttempts=0; base.lockedUntil=null; }
+    if(editUserId) await updateDoc(doc(db,'users',id),base);
+    else await setDoc(doc(db,'users',id),{...base,createdAt:serverTimestamp()});
+    $('userModal').classList.remove('on'); await loadUsers();
+  }catch(e){a.innerHTML=`<div class="alert err">${esc(e.message)}</div>`;}
+  finally{btn.disabled=false;btn.textContent='บันทึก';}
+}
+async function delUser(id){ if(id===ADMIN.id){alert('ลบบัญชีตัวเองไม่ได้');return;} if(!confirm(`ลบผู้ใช้ ${id}?`))return; await deleteDoc(doc(db,'users',id)); await loadUsers(); }
+
+/* ===== CAMERAS ===== */
+function renderCameras(){
+  const el=$('cameraList');
+  if(!CAMERAS.length){el.innerHTML='<div class="empty">ยังไม่มีกล้อง — เพิ่มกล้องเพื่อผูกกับสถานีสำหรับสอบสวน CCTV</div>';return;}
+  el.innerHTML=CAMERAS.sort((a,b)=>a.id.localeCompare(b.id)).map(c=>{
+    const cover=STATIONS.filter(s=>(s.cctvCameras||[]).includes(c.id)).length;
+    return `<div class="row">
+      <div class="av"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15234A" stroke-width="2"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+      <div class="main"><b>${esc(c.id)}</b><div class="meta">${esc(c.name||'')} ${c.location?'· '+esc(c.location):''} · ครอบคลุม ${cover} สถานี</div></div>
+      <div class="actions">
+        <button class="icbtn" data-edit-camera="${esc(c.id)}" title="แก้ไข"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
+        <button class="icbtn danger" data-del-camera="${esc(c.id)}" title="ลบ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+      </div></div>`;
+  }).join('');
+  el.querySelectorAll('[data-edit-camera]').forEach(b=>b.onclick=()=>openCamera(b.dataset.editCamera));
+  el.querySelectorAll('[data-del-camera]').forEach(b=>b.onclick=()=>delCamera(b.dataset.delCamera));
+}
+function openCamera(id){
+  editCameraId=id||null; $('cmTitle').textContent=id?'แก้ไขกล้อง':'เพิ่มกล้อง'; $('cmAlert').innerHTML='';
+  const c=id?CAMERAS.find(x=>x.id===id):null;
+  $('cmId').value=c?c.id:''; $('cmId').disabled=!!id; $('cmName').value=c?.name||''; $('cmLoc').value=c?.location||'';
+  $('cameraModal').classList.add('on');
+}
+async function saveCamera(){
+  const id=$('cmId').value.trim().toUpperCase(), a=$('cmAlert');
+  if(!id){a.innerHTML='<div class="alert err">กรอกรหัสกล้อง</div>';return;}
+  if(!editCameraId && CAMERAS.some(c=>c.id===id)){a.innerHTML='<div class="alert err">มีรหัสนี้แล้ว</div>';return;}
+  const btn=$('cmSave');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    const data={cameraId:id,name:$('cmName').value.trim(),location:$('cmLoc').value.trim()};
+    if(editCameraId) await updateDoc(doc(db,'cctvCameras',id),data);
+    else await setDoc(doc(db,'cctvCameras',id),{...data,createdAt:serverTimestamp()});
+    $('cameraModal').classList.remove('on'); await loadCameras();
+  }catch(e){a.innerHTML=`<div class="alert err">${esc(e.message)}</div>`;}
+  finally{btn.disabled=false;btn.textContent='บันทึก';}
+}
+async function delCamera(id){ if(!confirm(`ลบกล้อง ${id}?`))return; await deleteDoc(doc(db,'cctvCameras',id)); await loadCameras(); }
+
+/* ===== QR ===== */
+function qrUrl(sid){ const base=$('inspectUrl').value.trim(); return `${base}${base.includes('?')?'&':'?'}station=${encodeURIComponent(sid)}`; }
+function renderQR(){
+  const grid=$('qrGrid');
+  if(!STATIONS.length){grid.innerHTML='<div class="empty">ยังไม่มีสถานี</div>';return;}
+  grid.innerHTML='';
+  STATIONS.sort((a,b)=>a.id.localeCompare(b.id)).forEach(s=>{
+    const card=document.createElement('div'); card.className='qr-card';
+    const box=document.createElement('div'); box.className='qbox';
+    card.appendChild(box);
+    const id=document.createElement('div'); id.className='qid'; id.textContent=s.id; card.appendChild(id);
+    const nm=document.createElement('div'); nm.className='qnm'; nm.textContent=`${s.site||''} ${s.name?'· '+s.name:''}`; card.appendChild(nm);
+    const lbl=document.createElement('label'); lbl.className='sel';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.dataset.qr=s.id; cb.checked=true;
+    lbl.appendChild(cb); lbl.appendChild(document.createTextNode('เลือกพิมพ์')); card.appendChild(lbl);
+    grid.appendChild(card);
+    new QRCode(box,{text:qrUrl(s.id),width:150,height:150,correctLevel:QRCode.CorrectLevel.M});
+  });
+}
+function printSelected(){
+  const ids=[...document.querySelectorAll('[data-qr]:checked')].map(c=>c.dataset.qr);
+  if(!ids.length){alert('เลือกอย่างน้อย 1 สถานี');return;}
+  const sheet=$('labelSheet'); sheet.innerHTML='';
+  ids.forEach(sid=>{
+    const s=STATIONS.find(x=>x.id===sid);
+    const lab=document.createElement('div'); lab.className='label';
+    const tmp=document.createElement('div'); new QRCode(tmp,{text:qrUrl(sid),width:160,height:160,correctLevel:QRCode.CorrectLevel.M});
+    const img=tmp.querySelector('img')||tmp.querySelector('canvas');
+    lab.innerHTML=`<div class="hz"></div><div class="brand">BEVCHAIN · FIRE HOSE STATION</div>`;
+    const qd=document.createElement('div'); qd.className='qimg';
+    setTimeout(()=>{ const i=tmp.querySelector('img'); qd.appendChild(i?i.cloneNode():tmp.querySelector('canvas')); },150);
+    lab.appendChild(qd);
+    lab.insertAdjacentHTML('beforeend',`<div class="lid">${esc(sid)}</div><div class="lnm">${esc(s.name||'')} ${s.location?'· '+esc(s.location):''}</div><div class="scan">📱 สแกนเพื่อบันทึกการตรวจ</div>`);
+    sheet.appendChild(lab);
+  });
+  setTimeout(()=>window.print(),400);
+}
+
+/* ===== TABS & WIRING ===== */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on'); $('page-'+t.dataset.tab).classList.add('on');
+});
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('on'));
+$('addStation').onclick=()=>openStation(null);
+$('addUser').onclick=()=>openUser(null);
+$('addCamera').onclick=()=>openCamera(null);
+$('smAddEq').onclick=()=>addEqRow();
+$('smSave').onclick=saveStation;
+$('umSave').onclick=saveUser;
+$('cmSave').onclick=saveCamera;
+$('smGps').onclick=()=>{ if(!navigator.geolocation){alert('ไม่รองรับ GPS');return;} $('smGps').textContent='📍 กำลังระบุ…'; navigator.geolocation.getCurrentPosition(p=>{$('smLat').value=p.coords.latitude.toFixed(6);$('smLng').value=p.coords.longitude.toFixed(6);$('smGps').textContent='📍 บันทึกพิกัดแล้ว';},()=>{$('smGps').textContent='📍 ใช้ตำแหน่งปัจจุบัน';alert('เข้าถึง GPS ไม่ได้');}); };
+$('selectAll').onclick=()=>{ const cbs=[...document.querySelectorAll('[data-qr]')]; const all=cbs.every(c=>c.checked); cbs.forEach(c=>c.checked=!all); };
+$('printSel').onclick=printSelected;
+$('inspectUrl').onchange=renderQR;
+$('gBtn').onclick=gateLogin;
+$('gPw').addEventListener('keydown',e=>{if(e.key==='Enter')gateLogin();});
+$('seedLink').onclick=seedAdmin;
+$('logout').onclick=()=>{sessionStorage.removeItem('fhs_admin');location.reload();};
+
+/* boot */
+(function(){ const s=sessionStorage.getItem('fhs_admin'); if(s){ ADMIN=JSON.parse(s); bootApp(); } })();
+</script>
+</body>
+</html>

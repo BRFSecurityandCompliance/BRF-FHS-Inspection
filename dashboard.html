@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Command Center · FHS · BevChain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#E9ECF2;--surface:#FFFFFF;--surface-2:#F4F6FA;--ink:#0F1A2E;--navy:#15234A;--navy-2:#1E2761;
+  --red:#D62828;--red-deep:#9B1B1B;--amber:#E65100;--green:#0E8A5F;--line:#D7DDE8;--muted:#64708A;--ice:#CADCFC;
+  --shadow:0 1px 2px rgba(15,26,46,.06),0 8px 24px rgba(15,26,46,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:"IBM Plex Sans Thai",sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px}
+.mono{font-family:"IBM Plex Mono",monospace;letter-spacing:.02em}
+.hazard{height:6px;background:repeating-linear-gradient(135deg,var(--amber) 0 14px,var(--ink) 14px 28px)}
+.topbar{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:30}
+.logo{display:flex;align-items:center;gap:10px}.logo svg{width:30px;height:30px}
+.logo b{font-family:"Bai Jamjuree";font-weight:700;font-size:15px;line-height:1.1}
+.logo span{display:block;font-size:10.5px;color:var(--ice);font-weight:500;letter-spacing:.04em}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:12px;color:var(--ice)}
+.topbar .right a{color:#fff;cursor:pointer;font-weight:600}
+.wrap{max-width:1140px;margin:0 auto;padding:22px 18px 60px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border:none;border-radius:10px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;font-family:"Bai Jamjuree";transition:filter .15s,transform .08s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--navy);color:#fff}.btn-primary:hover{filter:brightness(1.13)}
+.btn-red{background:var(--red);color:#fff}
+.btn-ghost{background:var(--surface);color:var(--navy);border:1.5px solid var(--line)}
+.btn-green{background:var(--green);color:#fff}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-sm{padding:7px 13px;font-size:13px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+input,textarea,select{padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-size:14px;background:var(--surface);color:var(--ink)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--navy-2);box-shadow:0 0 0 3px rgba(30,39,97,.12)}
+label{display:block;font-size:13px;font-weight:600;color:var(--navy);margin:0 0 6px}
+
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:5px;margin-bottom:20px;overflow-x:auto;box-shadow:var(--shadow)}
+.tab{flex:1;padding:11px 14px;border:none;background:none;font:inherit;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer;border-radius:8px;white-space:nowrap;font-family:"Bai Jamjuree";position:relative}
+.tab.on{background:var(--navy);color:#fff}
+.tab .dot{position:absolute;top:6px;right:8px;min-width:17px;height:17px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.tab.on .dot{background:var(--amber)}
+.page{display:none}.page.on{display:block}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat .lab{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.stat .val{font-family:"Bai Jamjuree";font-weight:700;font-size:30px;margin-top:6px;line-height:1}
+.stat .sub{font-size:11.5px;color:var(--muted);margin-top:5px}
+.stat .bar{position:absolute;left:0;top:0;bottom:0;width:4px}
+.stat.s-navy .bar{background:var(--navy-2)}.stat.s-green .bar{background:var(--green)}
+.stat.s-red .bar{background:var(--red)}.stat.s-amber .bar{background:var(--amber)}
+.stat.s-green .val{color:var(--green)}.stat.s-red .val{color:var(--red)}.stat.s-amber .val{color:var(--amber)}
+
+.grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.panel-h{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:var(--surface-2)}
+.panel-h h3{font-family:"Bai Jamjuree";font-weight:600;font-size:15px}
+.panel-h .sub{font-size:11.5px;color:var(--muted);margin-left:auto}
+.panel-b{padding:16px}
+#map{height:340px;width:100%}
+.legend{display:flex;gap:14px;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:50%;display:inline-block}
+
+/* bar chart */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.bar-row .nm{font-size:12.5px;width:120px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:"IBM Plex Mono";font-weight:500}
+.bar-row .track{flex:1;height:22px;background:var(--surface-2);border-radius:6px;overflow:hidden;position:relative}
+.bar-row .fill{height:100%;border-radius:6px;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;color:#fff;font-size:11px;font-weight:700;min-width:24px;transition:width .6s ease}
+
+/* rows / list */
+.row{display:flex;align-items:center;gap:13px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row .av{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:none;font-family:"Bai Jamjuree";font-weight:700;font-size:13px}
+.row .main{flex:1;min-width:0}.row .main b{font-size:14px;font-weight:600;display:block}
+.row .main .meta{font-size:12px;color:var(--muted);margin-top:1px}
+.badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-block;white-space:nowrap}
+.badge.green{background:rgba(14,138,95,.13);color:var(--green)}
+.badge.red{background:rgba(214,40,40,.1);color:var(--red)}
+.badge.navy{background:rgba(30,39,97,.1);color:var(--navy-2)}
+.badge.amber{background:rgba(230,81,0,.13);color:var(--amber)}
+.badge.gray{background:#EEF1F6;color:var(--muted)}
+.empty{text-align:center;padding:36px 20px;color:var(--muted);font-size:14px}
+.filters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.filters input,.filters select{font-size:13px}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;padding:11px 12px;background:var(--surface-2);color:var(--navy);font-weight:600;font-size:12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid var(--line)}
+tr:hover td{background:var(--surface-2);cursor:pointer}
+.tag-result{font-weight:600}.tag-result.pass{color:var(--green)}.tag-result.fail,.tag-result.needs_repair{color:var(--red)}
+
+/* modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(15,26,46,.55);z-index:50;padding:20px;overflow-y:auto;align-items:flex-start;justify-content:center}
+.modal.on{display:flex}
+.modal-box{background:var(--surface);border-radius:16px;max-width:620px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:up .25s ease}
+@keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.modal-h{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+.modal-h h3{font-family:"Bai Jamjuree";font-weight:700;font-size:17px;color:var(--navy)}
+.modal-h .x{margin-left:auto;width:32px;height:32px;border:none;background:var(--surface-2);border-radius:8px;cursor:pointer;font-size:16px;color:var(--muted)}
+.modal-b{padding:20px;max-height:70vh;overflow-y:auto}
+
+/* investigation */
+.inv-head{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;border-radius:12px;padding:16px;margin-bottom:16px}
+.inv-head .t{font-family:"Bai Jamjuree";font-weight:700;font-size:18px}
+.inv-head .s{font-size:12.5px;color:var(--ice);margin-top:3px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:8px 14px;font-size:13.5px;margin-bottom:16px}
+.kv .k{color:var(--muted);font-weight:600}
+.kv .v{font-weight:500}
+.win{background:rgba(230,81,0,.07);border:1px solid rgba(230,81,0,.25);border-radius:11px;padding:14px;margin-bottom:16px}
+.win .wt{font-weight:700;color:var(--amber);font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.cam-list{display:flex;flex-wrap:wrap;gap:8px}
+.cam-pill{background:var(--navy);color:#fff;font-family:"IBM Plex Mono";font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;display:flex;align-items:center;gap:6px}
+.timeline{border-left:2px solid var(--line);padding-left:16px;margin:6px 0 16px}
+.tl-item{position:relative;padding-bottom:14px}
+.tl-item::before{content:"";position:absolute;left:-21px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--navy-2);border:2px solid var(--surface)}
+.tl-item.miss::before{background:var(--red)}.tl-item.ok::before{background:var(--green)}
+.tl-item .tt{font-size:13px;font-weight:600}.tl-item .td{font-size:11.5px;color:var(--muted)}
+.life{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.life button{flex:1;min-width:90px;padding:9px;border:1.5px solid var(--line);background:var(--surface);border-radius:9px;font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;color:var(--muted)}
+.life button.on[data-s=investigating]{background:var(--amber);border-color:var(--amber);color:#fff}
+.life button.on[data-s=found]{background:var(--green);border-color:var(--green);color:#fff}
+.life button.on[data-s=replaced]{background:var(--navy);border-color:var(--navy);color:#fff}
+.life button.on[data-s=closed]{background:var(--ink);border-color:var(--ink);color:#fff}
+
+.photos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px;border:1px solid var(--line);cursor:pointer}
+.cl-line{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.cl-line:last-child{border:none}
+.cl-line .cc{font-family:"IBM Plex Mono";font-weight:600;font-size:10.5px;color:#fff;padding:2px 6px;border-radius:5px;flex:none}
+.cl-line .cc.pass{background:var(--green)}.cl-line .cc.fail{background:var(--red)}.cl-line .cc.na{background:var(--muted)}
+
+.alert{padding:11px 14px;border-radius:10px;font-size:13px;font-weight:500;margin-bottom:14px}
+.alert.err{background:rgba(214,40,40,.08);color:var(--red-deep);border:1px solid rgba(214,40,40,.25)}
+.alert.info{background:rgba(30,39,97,.07);color:var(--navy-2);border:1px solid rgba(30,39,97,.18)}
+.hint{font-size:12px;color:var(--muted);margin-top:5px}
+.spinner{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.alert-grp{margin-bottom:18px}
+.alert-grp .gh{font-family:"Bai Jamjuree";font-weight:700;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.alert-grp .gh .ct{font-size:11px;background:var(--red);color:#fff;padding:1px 8px;border-radius:10px}
+
+#gate{position:fixed;inset:0;background:var(--bg);z-index:100;display:grid;place-items:center;padding:20px}
+#gate .box{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:30px;max-width:380px;width:100%}
+#gate h1{font-family:"Bai Jamjuree";font-weight:700;font-size:20px;color:var(--navy);text-align:center;margin-bottom:4px}
+#gate p{text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px}
+
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
+
+/* print investigation sheet */
+.print-area{display:none}
+@media print{
+  body *{visibility:hidden}.hazard,.topbar,.wrap,.modal{display:none!important}
+  .print-area,.print-area *{visibility:visible}
+  .print-area{display:block;position:absolute;top:0;left:0;width:100%;padding:30px;font-size:13px;color:#000}
+  .ps-hz{height:10px;background:repeating-linear-gradient(135deg,#E65100 0 14px,#0F1A2E 14px 28px);margin-bottom:18px}
+  .ps-title{font-family:"Bai Jamjuree";font-weight:700;font-size:22px;color:#15234A}
+  .ps-sub{color:#555;font-size:12px;margin-bottom:18px}
+  .ps-kv{display:grid;grid-template-columns:160px 1fr;gap:9px 16px;margin-bottom:18px;font-size:13px}
+  .ps-kv .k{font-weight:700;color:#15234A}
+  .ps-box{border:1.5px solid #15234A;border-radius:8px;padding:14px;margin-bottom:16px}
+  .ps-box h4{font-family:"Bai Jamjuree";font-size:14px;color:#D62828;margin-bottom:8px}
+  .ps-sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px}
+  .ps-sign .line{border-top:1px solid #000;padding-top:8px;text-align:center;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="hazard"></div>
+
+<div id="gate">
+  <div class="box">
+    <div style="text-align:center;margin-bottom:16px"><svg width="48" height="48" viewBox="0 0 64 64" fill="none"><path d="M32 6l22 8v16c0 14-9 23-22 28C19 53 10 44 10 30V14l22-8z" fill="#1E2761"/><rect x="22" y="26" width="20" height="14" rx="2" fill="#CADCFC"/><circle cx="32" cy="33" r="3" fill="#1E2761"/></svg></div>
+    <h1>Command Center</h1>
+    <p>Security &amp; Compliance · FHS</p>
+    <div id="gateAlert"></div>
+    <div style="margin-bottom:14px"><label>รหัสพนักงาน</label><input type="text" id="gId" class="mono" style="text-transform:uppercase;width:100%" placeholder="EMP-1001"></div>
+    <div style="margin-bottom:18px"><label>รหัสผ่าน</label><input type="password" id="gPw" style="width:100%" placeholder="••••••••"></div>
+    <button class="btn btn-primary" style="width:100%" id="gBtn">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="7" fill="#1E2761"/><rect x="9" y="11" width="14" height="10" rx="2" fill="#D62828"/><circle cx="16" cy="16" r="2.4" fill="#fff"/></svg>
+    <div><b>FHS Command Center</b><span>SECURITY &amp; COMPLIANCE</span></div></div>
+  <div class="right"><span id="adminName"></span><a href="admin.html">Admin ↗</a><a href="index.html">แอปตรวจ ↗</a><a id="logout">ออก</a></div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on" data-tab="dash">📊 ภาพรวม</button>
+    <button class="tab" data-tab="cases">🎥 สอบสวน CCTV <span class="dot" id="caseDot" style="display:none">0</span></button>
+    <button class="tab" data-tab="history">📋 ประวัติการตรวจ</button>
+    <button class="tab" data-tab="plan">🗓 แผนการตรวจ</button>
+    <button class="tab" data-tab="alerts">🔔 แจ้งเตือน <span class="dot" id="alertDot" style="display:none">0</span></button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page on" id="page-dash">
+    <div class="stats" id="statCards"></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-h"><h3>แผนที่สถานี</h3><span class="sub" id="mapSub"></span></div>
+        <div id="map"></div>
+        <div class="legend">
+          <span><i style="background:#0E8A5F"></i>ผ่าน/ปกติ</span>
+          <span><i style="background:#E65100"></i>เกินกำหนดตรวจ</span>
+          <span><i style="background:#D62828"></i>ไม่ผ่าน/มีเคสเปิด</span>
+          <span><i style="background:#64708A"></i>ยังไม่เคยตรวจ</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>สถิติปัญหา/ของหาย รายสถานี</h3><span class="sub">D9</span></div>
+        <div class="panel-b" id="issueChart"><div class="empty">ไม่มีข้อมูล</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h3>กิจกรรมล่าสุด</h3><span class="sub">10 รายการ</span></div>
+      <div id="recentList"><div class="empty">กำลังโหลด…</div></div>
+    </div>
+  </div>
+
+  <!-- CASES -->
+  <div class="page" id="page-cases">
+    <div class="filters">
+      <select id="caseFilter"><option value="open">เปิดอยู่ (investigating)</option><option value="all">ทั้งหมด</option><option value="found">พบแล้ว</option><option value="replaced">เปลี่ยนใหม่</option><option value="closed">ปิดเคส</option></select>
+      <button class="btn btn-green btn-sm" id="exportCases" style="margin-left:auto">⬇ Export Excel</button>
+    </div>
+    <div class="panel" id="caseList"><div class="empty">กำลังโหลด…</div></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="page" id="page-history">
+    <div class="filters">
+      <input type="text" id="histSearch" placeholder="ค้นหา สถานี/ผู้ตรวจ…" style="flex:1;min-width:160px">
+      <select id="histSite"><option value="">ทุกไซต์</option></select>
+      <select id="histResult"><option value="">ทุกผล</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option><option value="needs_repair">ต้องแก้ไข</option></select>
+      <button class="btn btn-green btn-sm" id="exportHist">⬇ Export Excel</button>
+    </div>
+    <div class="panel" style="overflow-x:auto"><table id="histTable"><thead><tr><th>วันเวลา</th><th>สถานี</th><th>ไซต์</th><th>ผู้ตรวจ</th><th>ผล</th><th>ของหาย</th><th>รูป</th></tr></thead><tbody id="histBody"><tr><td colspan="7"><div class="empty">กำลังโหลด…</div></td></tr></tbody></table></div>
+  </div>
+
+  <!-- PLAN -->
+  <div class="page" id="page-plan">
+    <div class="stats" id="planStats" style="grid-template-columns:repeat(3,1fr)"></div>
+    <div class="filters">
+      <select id="planSite"><option value="">ทุกไซต์</option></select>
+      <select id="planAssignee"><option value="">ผู้รับผิดชอบทั้งหมด</option></select>
+      <select id="planStatus"><option value="">ทุกสถานะ</option><option value="overdue">เกินกำหนด</option><option value="soon">ใกล้ครบ (≤2 วัน)</option><option value="ontrack">ตรงเวลา</option><option value="never">ยังไม่เคยตรวจ</option></select>
+      <button class="btn btn-green btn-sm" id="exportPlan" style="margin-left:auto">⬇ Export Excel</button>
+    </div>
+    <div class="panel" style="overflow-x:auto"><table id="planTable"><thead><tr><th>สถานี</th><th>ไซต์</th><th>ผู้รับผิดชอบ</th><th>ความถี่</th><th>ตรวจล่าสุด</th><th>ครบกำหนด</th><th>สถานะ</th></tr></thead><tbody id="planBody"><tr><td colspan="7"><div class="empty">กำลังโหลด…</div></td></tr></tbody></table></div>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="page" id="page-alerts">
+    <div id="alertsBody"><div class="empty">กำลังโหลด…</div></div>
+  </div>
+</div>
+
+<!-- CASE / INVESTIGATION MODAL -->
+<div class="modal" id="caseModal"><div class="modal-box">
+  <div class="modal-h"><h3>ใบสอบสวน CCTV</h3><button class="x" data-close>✕</button></div>
+  <div class="modal-b" id="caseBody"></div>
+</div></div>
+
+<!-- INSPECTION DETAIL MODAL -->
+<div class="modal" id="inspModal"><div class="modal-box">
+  <div class="modal-h"><h3>รายละเอียดการตรวจ</h3><button class="x" data-close>✕</button></div>
+  <div class="modal-b" id="inspBody"></div>
+</div></div>
+
+<div class="print-area" id="printArea"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, updateDoc, collection, getDocs, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+/* ====== CONFIG — ใช้ค่าเดียวกับ index.html / admin.html ====== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBusmdWb1BuElcAgZ8IC4-bwUW0p8X0ifg",
+  authDomain: "bevchain-fhs.firebaseapp.com",
+  projectId: "bevchain-fhs",
+  storageBucket: "bevchain-fhs.firebasestorage.app",
+  messagingSenderId: "568964415233",
+  appId: "1:568964415233:web:4be7220d2d14644fbce500"
+};
+const OVERDUE_DAYS = 7;        // สถานีไม่ถูกตรวจเกินกี่วัน = เกินกำหนด (G2)
+const STALE_CASE_DAYS = 14;    // เคสเปิดค้างเกินกี่วัน = ค้างนาน (G3)
+/* ============================================================ */
+
+const app=initializeApp(FIREBASE_CONFIG); const db=getFirestore(app);
+const $=id=>document.getElementById(id);
+const esc=s=>{const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;};
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+const tsDate=ts=>ts?(ts.toDate?ts.toDate():new Date(ts)):null;
+const fmt=d=>d?d.toLocaleString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+const fmtD=d=>d?d.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'}):'—';
+const daysAgo=d=>d?Math.floor((Date.now()-d.getTime())/86400000):null;
+
+let STATIONS=[],INSPECTIONS=[],CASES=[],CAMERAS=[],USERS=[],ADMIN=null,map=null,markers=[],curCase=null;
+
+/* ===== GATE ===== */
+async function gateLogin(){
+  const id=$('gId').value.trim().toUpperCase(),pw=$('gPw').value,a=$('gateAlert');a.innerHTML='';
+  if(!id||!pw){a.innerHTML='<div class="alert err">กรอกข้อมูลให้ครบ</div>';return;}
+  const btn=$('gBtn');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    const snap=await getDoc(doc(db,'users',id)); if(!snap.exists())throw new Error('ไม่พบผู้ใช้');
+    const u=snap.data();
+    if(!['admin','viewer'].includes(u.role))throw new Error('บัญชีนี้ไม่มีสิทธิ์เข้า Command Center');
+    if((await sha256((u.salt||'')+pw))!==u.passwordHash)throw new Error('รหัสผ่านไม่ถูกต้อง');
+    ADMIN={id,name:u.name||id,role:u.role}; sessionStorage.setItem('fhs_admin',JSON.stringify(ADMIN)); boot();
+  }catch(e){a.innerHTML=`<div class="alert err">${esc(e.message)}</div>`;}
+  finally{btn.disabled=false;btn.textContent='เข้าสู่ระบบ';}
+}
+function boot(){ $('gate').style.display='none'; $('adminName').textContent=`${ADMIN.name} · ${ADMIN.role}`; loadAll(); }
+
+/* ===== LOAD ===== */
+async function loadAll(){
+  const [st,ins,cs,cam,us]=await Promise.all([
+    getDocs(collection(db,'stations')),getDocs(collection(db,'inspections')),
+    getDocs(collection(db,'cases')),getDocs(collection(db,'cctvCameras')),getDocs(collection(db,'users'))]);
+  STATIONS=st.docs.map(d=>({id:d.id,...d.data()}));
+  INSPECTIONS=ins.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(tsDate(b.createdAt)?.getTime()||0)-(tsDate(a.createdAt)?.getTime()||0));
+  CASES=cs.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(tsDate(b.reportedMissingAt)?.getTime()||0)-(tsDate(a.reportedMissingAt)?.getTime()||0));
+  CAMERAS=cam.docs.map(d=>({id:d.id,...d.data()}));
+  USERS=us.docs.map(d=>({id:d.id,...d.data()}));
+  // history site filter options
+  const sites=[...new Set(STATIONS.map(s=>s.site).filter(Boolean))];
+  $('histSite').innerHTML='<option value="">ทุกไซต์</option>'+sites.map(s=>`<option>${esc(s)}</option>`).join('');
+  $('planSite').innerHTML='<option value="">ทุกไซต์</option>'+sites.map(s=>`<option>${esc(s)}</option>`).join('');
+  const assignees=[...new Map(STATIONS.filter(s=>s.assignedTo).map(s=>[s.assignedTo,s.assignedToName||s.assignedTo])).entries()];
+  $('planAssignee').innerHTML='<option value="">ผู้รับผิดชอบทั้งหมด</option>'+assignees.map(([id,nm])=>`<option value="${esc(id)}">${esc(nm)}</option>`).join('')+'<option value="_none">— ยังไม่มอบหมาย —</option>';
+  renderDash(); renderCases(); renderHistory(); renderPlan(); renderAlerts(); renderBadges();
+}
+
+/* ===== METRICS / DASHBOARD ===== */
+function latestInspectionFor(sid){ return INSPECTIONS.find(i=>i.stationId===sid)||null; }
+function freqOf(s){ return s.inspectionFrequencyDays||OVERDUE_DAYS; }
+function planInfo(s){
+  // schedule status per station based on its own frequency
+  const li=tsDate(s.lastInspectionAt); const freq=freqOf(s);
+  if(!li) return {status:'never', due:null, overBy:null, label:'ยังไม่เคยตรวจ'};
+  const due=new Date(li.getTime()+freq*86400000);
+  const overBy=Math.floor((Date.now()-due.getTime())/86400000);
+  if(overBy>0) return {status:'overdue', due, overBy, label:`เกิน ${overBy} วัน`};
+  if(overBy>=-2) return {status:'soon', due, overBy, label:`อีก ${Math.abs(overBy)} วัน`};
+  return {status:'ontrack', due, overBy, label:`อีก ${Math.abs(overBy)} วัน`};
+}
+function stationStatus(s){
+  const openCase=CASES.some(c=>c.stationId===s.id&&c.status==='investigating');
+  if(openCase||s.lastResult==='fail'||s.lastResult==='needs_repair') return 'red';
+  const p=planInfo(s);
+  if(p.status==='never') return 'gray';
+  if(p.status==='overdue') return 'amber';
+  return 'green';
+}
+const STATUS_COLOR={green:'#0E8A5F',amber:'#E65100',red:'#D62828',gray:'#64708A'};
+
+function renderDash(){
+  const total=STATIONS.length;
+  const inspected=STATIONS.filter(s=>tsDate(s.lastInspectionAt)&&daysAgo(tsDate(s.lastInspectionAt))<=OVERDUE_DAYS).length;
+  const compliance=total?Math.round(inspected/total*100):0;
+  const openCases=CASES.filter(c=>c.status==='investigating').length;
+  const overdue=STATIONS.filter(s=>{const li=tsDate(s.lastInspectionAt);return !li||daysAgo(li)>OVERDUE_DAYS;}).length;
+
+  $('statCards').innerHTML=`
+    <div class="stat s-navy"><div class="bar"></div><div class="lab">สถานีทั้งหมด</div><div class="val">${total}</div><div class="sub">${[...new Set(STATIONS.map(s=>s.site).filter(Boolean))].length} ไซต์</div></div>
+    <div class="stat ${compliance>=80?'s-green':compliance>=50?'s-amber':'s-red'}"><div class="bar"></div><div class="lab">Compliance (${OVERDUE_DAYS} วัน)</div><div class="val">${compliance}%</div><div class="sub">ตรวจตามกำหนด ${inspected}/${total}</div></div>
+    <div class="stat ${openCases?'s-red':'s-green'}"><div class="bar"></div><div class="lab">🎥 เคสของหายเปิดอยู่</div><div class="val">${openCases}</div><div class="sub">รอสอบสวน CCTV</div></div>
+    <div class="stat ${overdue?'s-amber':'s-green'}"><div class="bar"></div><div class="lab">เกินกำหนดตรวจ</div><div class="val">${overdue}</div><div class="sub">สถานีต้องตรวจด่วน</div></div>`;
+
+  renderMap(); renderIssueChart(); renderRecent();
+}
+function renderMap(){
+  const geo=STATIONS.filter(s=>s.gps&&s.gps.lat);
+  $('mapSub').textContent=`${geo.length}/${STATIONS.length} มีพิกัด`;
+  if(!map){ map=L.map('map',{scrollWheelZoom:false}).setView([13.7563,100.5018],11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map); }
+  markers.forEach(m=>map.removeLayer(m)); markers=[];
+  if(!geo.length){ return; }
+  const grp=[];
+  geo.forEach(s=>{
+    const col=STATUS_COLOR[stationStatus(s)];
+    const m=L.circleMarker([s.gps.lat,s.gps.lng],{radius:9,fillColor:col,color:'#fff',weight:2,fillOpacity:.9}).addTo(map);
+    const li=tsDate(s.lastInspectionFor);
+    m.bindPopup(`<b>${esc(s.id)}</b><br>${esc(s.name||'')}<br>ตรวจล่าสุด: ${fmt(tsDate(s.lastInspectionAt))}<br>ผล: ${esc(s.lastResult||'ยังไม่ตรวจ')}`);
+    markers.push(m); grp.push([s.gps.lat,s.gps.lng]);
+  });
+  if(grp.length) map.fitBounds(grp,{padding:[40,40],maxZoom:15});
+  setTimeout(()=>map.invalidateSize(),200);
+}
+function renderIssueChart(){
+  // count issues (missing/damaged/fail) per station from inspections + cases
+  const cnt={};
+  INSPECTIONS.forEach(i=>{ const n=(i.missingItems?.length||0)+(i.result==='fail'?1:0); if(n)cnt[i.stationId]=(cnt[i.stationId]||0)+n; });
+  CASES.forEach(c=>{ cnt[c.stationId]=(cnt[c.stationId]||0)+1; });
+  const arr=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  if(!arr.length){ $('issueChart').innerHTML='<div class="empty">ยังไม่มีปัญหาบันทึก ✓</div>'; return; }
+  const max=Math.max(...arr.map(a=>a[1]));
+  $('issueChart').innerHTML=arr.map(([sid,n])=>{
+    const pct=Math.round(n/max*100); const col=n>=max*0.66?'var(--red)':n>=max*0.33?'var(--amber)':'var(--navy-2)';
+    return `<div class="bar-row"><span class="nm" title="${esc(sid)}">${esc(sid)}</span><div class="track"><div class="fill" style="width:${pct}%;background:${col}">${n}</div></div></div>`;
+  }).join('');
+}
+function renderRecent(){
+  if(!INSPECTIONS.length){ $('recentList').innerHTML='<div class="empty">ยังไม่มีการตรวจ</div>'; return; }
+  $('recentList').innerHTML=INSPECTIONS.slice(0,10).map(i=>{
+    const c=i.result==='pass'?'green':'red';
+    const ic=i.result==='pass'?'#0E8A5F':'#D62828';
+    return `<div class="row" data-insp="${esc(i.id)}" style="cursor:pointer">
+      <div class="av" style="background:rgba(${c==='green'?'14,138,95':'214,40,40'},.12);color:${ic}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">${i.result==='pass'?'<path d="M20 6L9 17l-5-5"/>':'<path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>'}</svg></div>
+      <div class="main"><b>${esc(i.stationId)} <span class="badge ${c}">${i.result==='pass'?'ผ่าน':i.result==='needs_repair'?'ต้องแก้ไข':'ไม่ผ่าน'}</span>${i.missingItems?.length?` <span class="badge red">ของหาย ${i.missingItems.length}</span>`:''}</b>
+        <div class="meta">${esc(i.inspectorName||'')} · ${fmt(tsDate(i.createdAt))} ${i.gpsDistanceM!=null?'· '+i.gpsDistanceM+'ม.':''}</div></div>
+      <div class="badge gray">${(i.photos?.length||0)} 📷</div></div>`;
+  }).join('');
+  $('recentList').querySelectorAll('[data-insp]').forEach(r=>r.onclick=()=>openInsp(r.dataset.insp));
+}
+
+/* ===== CASES / CCTV INVESTIGATION (D3–D9) ===== */
+function renderBadges(){
+  const open=CASES.filter(c=>c.status==='investigating').length;
+  $('caseDot').style.display=open?'grid':'none'; $('caseDot').textContent=open;
+  const alerts=countAlerts();
+  $('alertDot').style.display=alerts?'grid':'none'; $('alertDot').textContent=alerts;
+}
+function renderCases(){
+  const f=$('caseFilter').value;
+  let list=CASES.slice();
+  if(f==='open')list=list.filter(c=>c.status==='investigating');
+  else if(f!=='all')list=list.filter(c=>c.status===f);
+  const el=$('caseList');
+  if(!list.length){ el.innerHTML='<div class="empty">ไม่มีเคสในหมวดนี้ ✓</div>'; return; }
+  const sc={investigating:'amber',found:'green',replaced:'navy',closed:'gray'};
+  const sl={investigating:'กำลังสอบสวน',found:'พบแล้ว',replaced:'เปลี่ยนใหม่',closed:'ปิดเคส'};
+  el.innerHTML=list.map(c=>{
+    const rep=tsDate(c.reportedMissingAt); const stale=c.status==='investigating'&&daysAgo(rep)>STALE_CASE_DAYS;
+    return `<div class="row" data-case="${esc(c.id)}" style="cursor:pointer">
+      <div class="av" style="background:rgba(214,40,40,.1);color:#D62828"><svg width="18" height="18" viewBox="0 0 24 24" fill="#D62828"><path d="M12 2C9 6 7 8 7 11.5A5 5 0 0 0 12 16a5 5 0 0 0 5-4.5C17 8 15 6 12 2z"/></svg></div>
+      <div class="main"><b>${esc(c.itemName||'อุปกรณ์')} <span class="badge ${sc[c.status]||'gray'}">${sl[c.status]||c.status}</span>${stale?' <span class="badge red">ค้าง '+daysAgo(rep)+' วัน</span>':''}</b>
+        <div class="meta"><span class="mono">${esc(c.stationId)}</span> · แจ้ง ${fmt(rep)} · โดย ${esc(c.reportedBy||'—')} · 🎥 ${(c.cctvCameras||[]).length} กล้อง</div></div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64708A" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></div>`;
+  }).join('');
+  el.querySelectorAll('[data-case]').forEach(r=>r.onclick=()=>openCase(r.dataset.case));
+}
+function stationTimeline(sid,itemId){
+  // build timeline of when item was seen present vs missing across inspections
+  return INSPECTIONS.filter(i=>i.stationId===sid).slice(0,12).map(i=>{
+    const snap=(i.equipmentSnapshot||[]).find(e=>e.id===itemId);
+    return { date:tsDate(i.createdAt), status:snap?snap.status:'?', by:i.inspectorName, result:i.result };
+  }).filter(x=>x.date);
+}
+function openCase(id){
+  const c=CASES.find(x=>x.id===id); if(!c)return; curCase=c;
+  const rep=tsDate(c.reportedMissingAt), seen=c.lastSeenAt?new Date(c.lastSeenAt):null;
+  const winStart=c.cctvWindow?.start?new Date(c.cctvWindow.start):null;
+  const winEnd=c.cctvWindow?.end?new Date(c.cctvWindow.end):rep;
+  let durTxt='—';
+  if(winStart&&winEnd){ const h=Math.round((winEnd-winStart)/3600000); durTxt=h<48?`${h} ชม.`:`${Math.round(h/24)} วัน`; }
+  const cams=(c.cctvCameras||[]).map(cid=>{ const cam=CAMERAS.find(x=>x.id===cid); return {id:cid,name:cam?.name||'',loc:cam?.location||''}; });
+  const tl=stationTimeline(c.stationId,c.itemId);
+  const sl={investigating:'กำลังสอบสวน',found:'พบแล้ว',replaced:'เปลี่ยนใหม่',closed:'ปิดเคส'};
+
+  $('caseBody').innerHTML=`
+    <div class="inv-head"><div class="t">${esc(c.itemName||'อุปกรณ์')} หาย</div><div class="s">${esc(c.stationName||'')} · ${esc(c.stationId)} · เคส ${esc(c.id.slice(0,8).toUpperCase())}</div></div>
+    <div class="kv">
+      <div class="k">สถานะปัจจุบัน</div><div class="v">${sl[c.status]||c.status}</div>
+      <div class="k">เห็นครั้งสุดท้าย</div><div class="v">${seen?fmt(seen):'ไม่มีข้อมูล'} ${c.lastSeenBy?'· โดย '+esc(c.lastSeenBy):''}</div>
+      <div class="k">แจ้งหาย</div><div class="v">${fmt(rep)} · โดย ${esc(c.reportedBy||'—')}</div>
+    </div>
+    <div class="win">
+      <div class="wt">🎥 ช่วงเวลาที่ต้องตรวจ CCTV (D3)</div>
+      <div style="font-size:14px;font-weight:600">${winStart?fmt(winStart):'(ไม่ทราบจุดเริ่ม — ตรวจย้อนจากการตรวจก่อนหน้า)'} &nbsp;→&nbsp; ${fmt(winEnd)}</div>
+      <div class="hint" style="margin-top:4px">ช่วงเวลาโดยประมาณ: <b>${durTxt}</b> — อุปกรณ์หายไประหว่างนี้</div>
+    </div>
+    <div style="margin-bottom:6px"><label>กล้องที่ต้องเปิดดู (D4)</label></div>
+    <div class="cam-list" style="margin-bottom:16px">${cams.length?cams.map(cm=>`<span class="cam-pill" title="${esc(cm.name)} ${esc(cm.loc)}">🎥 ${esc(cm.id)}</span>`).join(''):'<span class="hint">สถานีนี้ยังไม่ได้ผูกกล้องใน Admin</span>'}</div>
+    <div style="margin-bottom:6px"><label>ไทม์ไลน์สถานี (D6) — สถานะอุปกรณ์ย้อนหลัง</label></div>
+    <div class="timeline">${tl.length?tl.map(t=>`<div class="tl-item ${t.status==='missing'?'miss':t.status==='present'?'ok':''}"><div class="tt">${t.status==='present'?'✓ พบอุปกรณ์':t.status==='missing'?'✕ ไม่พบ':'— ไม่ระบุ'}</div><div class="td">${fmt(t.date)} · ${esc(t.by||'')}</div></div>`).join(''):'<div class="hint">ไม่มีประวัติ</div>'}</div>
+    <div style="margin-bottom:6px"><label>อัปเดตสถานะเคส (D7)</label></div>
+    <div class="life">
+      ${['investigating','found','replaced','closed'].map(s=>`<button data-s="${s}" class="${c.status===s?'on':''}">${sl[s]}</button>`).join('')}
+    </div>
+    <div style="margin-bottom:12px"><textarea id="caseNote" placeholder="บันทึกผลการสอบสวน / หมายเหตุ…" style="width:100%;min-height:70px">${esc(c.notes||'')}</textarea></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost btn-sm" id="printInv">🖨 พิมพ์ใบสอบสวน (D5)</button>
+      <button class="btn btn-primary btn-sm" id="saveCase" style="margin-left:auto" ${ADMIN.role!=='admin'?'disabled title="เฉพาะ admin"':''}>บันทึก</button>
+    </div>`;
+
+  let newStatus=c.status;
+  $('caseBody').querySelectorAll('.life button').forEach(b=>b.onclick=()=>{
+    if(ADMIN.role!=='admin')return;
+    $('caseBody').querySelectorAll('.life button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); newStatus=b.dataset.s;
+  });
+  $('printInv').onclick=()=>printInvestigation(c,cams,winStart,winEnd,durTxt);
+  $('saveCase').onclick=async()=>{
+    const btn=$('saveCase');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+    try{
+      await updateDoc(doc(db,'cases',c.id),{status:newStatus,notes:$('caseNote').value.trim(),updatedAt:serverTimestamp(),updatedBy:ADMIN.name});
+      $('caseModal').classList.remove('on'); await loadAll();
+    }catch(e){ btn.disabled=false; btn.textContent='บันทึก'; alert('บันทึกไม่สำเร็จ: '+e.message); }
+  };
+  $('caseModal').classList.add('on');
+}
+function printInvestigation(c,cams,winStart,winEnd,durTxt){
+  const seen=c.lastSeenAt?new Date(c.lastSeenAt):null, rep=tsDate(c.reportedMissingAt);
+  $('printArea').innerHTML=`
+    <div class="ps-hz"></div>
+    <div class="ps-title">ใบสอบสวนอุปกรณ์สูญหาย</div>
+    <div class="ps-sub">BevChain Thailand · Security &amp; Compliance · Fire Hose Station Investigation</div>
+    <div class="ps-kv">
+      <div class="k">เลขที่เคส</div><div>${esc(c.id.slice(0,8).toUpperCase())}</div>
+      <div class="k">สถานี</div><div>${esc(c.stationId)} — ${esc(c.stationName||'')}</div>
+      <div class="k">อุปกรณ์ที่หาย</div><div>${esc(c.itemName||'')}</div>
+      <div class="k">เห็นครั้งสุดท้าย</div><div>${seen?fmt(seen):'ไม่มีข้อมูล'} ${c.lastSeenBy?'(โดย '+esc(c.lastSeenBy)+')':''}</div>
+      <div class="k">วันที่แจ้งหาย</div><div>${fmt(rep)} (โดย ${esc(c.reportedBy||'—')})</div>
+    </div>
+    <div class="ps-box"><h4>🎥 ช่วงเวลาที่ต้องตรวจสอบกล้องวงจรปิด</h4>
+      <div><b>เริ่ม:</b> ${winStart?fmt(winStart):'ไม่ทราบ (ตรวจย้อนจากการตรวจครั้งก่อน)'}</div>
+      <div><b>ถึง:</b> ${fmt(winEnd)}</div>
+      <div><b>ระยะเวลาโดยประมาณ:</b> ${durTxt}</div>
+      <div style="margin-top:8px"><b>กล้องที่ต้องเปิดดู:</b> ${cams.length?cams.map(cm=>esc(cm.id)+(cm.loc?` (${esc(cm.loc)})`:'')).join(', '):'— ไม่ได้ผูกกล้อง'}</div>
+    </div>
+    <div class="ps-box"><h4>ผลการตรวจสอบ CCTV / ข้อสังเกต</h4><div style="min-height:90px">${esc(c.notes||'')}</div></div>
+    <div class="ps-sign"><div class="line">ผู้สอบสวน<br>(_______________________)</div><div class="line">ผู้อนุมัติ<br>(_______________________)</div></div>`;
+  setTimeout(()=>window.print(),300);
+}
+
+/* ===== HISTORY (F5/F7) ===== */
+function renderHistory(){
+  const q=$('histSearch').value.trim().toLowerCase(), site=$('histSite').value, res=$('histResult').value;
+  let list=INSPECTIONS.filter(i=>{
+    if(site&&i.site!==site)return false;
+    if(res&&i.result!==res)return false;
+    if(q&&!(`${i.stationId} ${i.stationName} ${i.inspectorName}`.toLowerCase().includes(q)))return false;
+    return true;
+  });
+  const tb=$('histBody');
+  if(!list.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">ไม่พบรายการ</div></td></tr>'; return; }
+  tb.innerHTML=list.slice(0,200).map(i=>`<tr data-insp="${esc(i.id)}">
+    <td style="white-space:nowrap">${fmt(tsDate(i.createdAt))}</td>
+    <td class="mono">${esc(i.stationId)}</td><td>${esc(i.site||'')}</td><td>${esc(i.inspectorName||'')}</td>
+    <td class="tag-result ${i.result}">${i.result==='pass'?'ผ่าน':i.result==='needs_repair'?'ต้องแก้ไข':'ไม่ผ่าน'}</td>
+    <td>${i.missingItems?.length?`<span class="badge red">${i.missingItems.length}</span>`:'—'}</td>
+    <td>${i.photos?.length||0} 📷</td></tr>`).join('');
+  tb.querySelectorAll('[data-insp]').forEach(r=>r.onclick=()=>openInsp(r.dataset.insp));
+}
+function openInsp(id){
+  const i=INSPECTIONS.find(x=>x.id===id); if(!i)return;
+  const cl=i.checklist||{};
+  const clHtml=Object.entries(cl).map(([code,v])=>`<div class="cl-line"><span class="cc ${v.status}">${esc(code)}</span><span style="flex:1">${v.status==='pass'?'ผ่าน':v.status==='fail'?'ไม่ผ่าน':'N/A'}${v.note?' — '+esc(v.note):''}</span></div>`).join('');
+  const eq=(i.equipmentSnapshot||[]).map(e=>`<span class="badge ${e.status==='present'?'green':e.status==='missing'?'red':'amber'}">${esc(e.name)}: ${e.status==='present'?'ครบ':e.status==='missing'?'หาย':'ชำรุด'}</span>`).join(' ');
+  $('inspBody').innerHTML=`
+    <div class="inv-head"><div class="t">${esc(i.stationId)}</div><div class="s">${esc(i.stationName||'')} · ${esc(i.site||'')}</div></div>
+    <div class="kv">
+      <div class="k">ผู้ตรวจ</div><div class="v">${esc(i.inspectorName||'')}</div>
+      <div class="k">วันเวลา</div><div class="v">${fmt(tsDate(i.createdAt))}</div>
+      <div class="k">ผล</div><div class="v tag-result ${i.result}">${i.result==='pass'?'ผ่าน':i.result==='needs_repair'?'ต้องแก้ไข':'ไม่ผ่าน'}</div>
+      <div class="k">GPS</div><div class="v">${i.gpsDistanceM!=null?'ห่าง '+i.gpsDistanceM+' ม.':'—'}</div>
+      <div class="k">แรงดัน</div><div class="v">${i.pressureValue!=null?i.pressureValue+' bar':'—'}</div>
+      <div class="k">ซีล</div><div class="v mono">${esc(i.sealNumber||'—')}</div>
+    </div>
+    ${eq?`<div style="margin-bottom:6px"><label>อุปกรณ์</label></div><div style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:6px">${eq}</div>`:''}
+    <div style="margin-bottom:6px"><label>รายการตรวจ</label></div><div style="margin-bottom:16px">${clHtml||'<span class="hint">—</span>'}</div>
+    ${i.notes?`<div style="margin-bottom:6px"><label>หมายเหตุ</label></div><div style="margin-bottom:16px;font-size:13.5px">${esc(i.notes)}</div>`:''}
+    ${i.photos?.length?`<div style="margin-bottom:6px"><label>รูปหลักฐาน (${i.photos.length})</label></div><div class="photos">${i.photos.map(p=>`<img src="${esc(p.url)}" onclick="window.open('${esc(p.url)}','_blank')">`).join('')}</div>`:''}
+    ${i.signatureUrl?`<div style="margin-top:14px;margin-bottom:6px"><label>ลายเซ็นผู้ตรวจ</label></div><img src="${esc(i.signatureUrl)}" style="max-width:240px;border:1px solid var(--line);border-radius:9px;background:#fff;padding:6px">`:''}`;
+  $('inspModal').classList.add('on');
+}
+
+/* ===== ALERTS (G1–G4) ===== */
+function getAlerts(){
+  const out={missing:[],overdue:[],stale:[],seal:[]};
+  // G1 missing items (open cases)
+  CASES.filter(c=>c.status==='investigating').forEach(c=>out.missing.push(c));
+  // G2 overdue stations
+  STATIONS.forEach(s=>{ const li=tsDate(s.lastInspectionAt); const d=li?daysAgo(li):null; if(!li||d>OVERDUE_DAYS) out.overdue.push({s,days:d}); });
+  // G3 stale cases
+  CASES.filter(c=>c.status==='investigating'&&daysAgo(tsDate(c.reportedMissingAt))>STALE_CASE_DAYS).forEach(c=>out.stale.push(c));
+  // G4 seal mismatch: seal changed between 2 latest inspections of a station
+  STATIONS.forEach(s=>{
+    const ins=INSPECTIONS.filter(i=>i.stationId===s.id&&i.sealNumber).slice(0,2);
+    if(ins.length===2&&ins[0].sealNumber!==ins[1].sealNumber) out.seal.push({s,now:ins[0].sealNumber,prev:ins[1].sealNumber});
+  });
+  return out;
+}
+function countAlerts(){ const a=getAlerts(); return a.missing.length+a.overdue.length+a.stale.length+a.seal.length; }
+function renderAlerts(){
+  const a=getAlerts(); const el=$('alertsBody'); let html='';
+  if(!countAlerts()){ el.innerHTML='<div class="empty">ไม่มีการแจ้งเตือน ทุกอย่างปกติ ✓</div>'; return; }
+  if(a.missing.length){ html+=`<div class="alert-grp"><div class="gh">🎥 อุปกรณ์หาย — รอสอบสวน <span class="ct">${a.missing.length}</span></div><div class="panel">${a.missing.map(c=>`<div class="row" data-case="${esc(c.id)}" style="cursor:pointer"><div class="av" style="background:rgba(214,40,40,.1);color:#D62828">!</div><div class="main"><b>${esc(c.itemName)}</b><div class="meta">${esc(c.stationId)} · แจ้ง ${fmt(tsDate(c.reportedMissingAt))}</div></div><span class="badge amber">เปิดเคส CCTV</span></div>`).join('')}</div></div>`; }
+  if(a.overdue.length){ html+=`<div class="alert-grp"><div class="gh">⏰ สถานีเกินกำหนดตรวจ (>${OVERDUE_DAYS} วัน) <span class="ct">${a.overdue.length}</span></div><div class="panel">${a.overdue.map(o=>`<div class="row"><div class="av" style="background:rgba(230,81,0,.13);color:#E65100">${o.days??'∞'}</div><div class="main"><b>${esc(o.s.id)} <span class="badge navy">${esc(o.s.site||'')}</span></b><div class="meta">${esc(o.s.name||'')} · ${o.days!=null?'ตรวจล่าสุด '+o.days+' วันก่อน':'ยังไม่เคยตรวจ'}</div></div><span class="badge amber">ตรวจด่วน</span></div>`).join('')}</div></div>`; }
+  if(a.stale.length){ html+=`<div class="alert-grp"><div class="gh">🐌 เคสค้างนาน (>${STALE_CASE_DAYS} วัน) <span class="ct">${a.stale.length}</span></div><div class="panel">${a.stale.map(c=>`<div class="row" data-case="${esc(c.id)}" style="cursor:pointer"><div class="av" style="background:rgba(214,40,40,.1);color:#D62828">${daysAgo(tsDate(c.reportedMissingAt))}</div><div class="main"><b>${esc(c.itemName)} @ ${esc(c.stationId)}</b><div class="meta">เปิดมาแล้ว ${daysAgo(tsDate(c.reportedMissingAt))} วัน ยังไม่ปิด</div></div><span class="badge red">เร่งติดตาม</span></div>`).join('')}</div></div>`; }
+  if(a.seal.length){ html+=`<div class="alert-grp"><div class="gh">🔒 ซีลเปลี่ยน/ไม่ตรงกับครั้งก่อน <span class="ct">${a.seal.length}</span></div><div class="panel">${a.seal.map(x=>`<div class="row"><div class="av" style="background:rgba(230,81,0,.13);color:#E65100">🔒</div><div class="main"><b>${esc(x.s.id)}</b><div class="meta">ซีลล่าสุด <span class="mono">${esc(x.now)}</span> · ก่อนหน้า <span class="mono">${esc(x.prev)}</span></div></div><span class="badge amber">ตรวจสอบ</span></div>`).join('')}</div></div>`; }
+  el.innerHTML=html;
+  el.querySelectorAll('[data-case]').forEach(r=>r.onclick=()=>openCase(r.dataset.case));
+}
+
+/* ===== EXPORT (H1–H3) ===== */
+function exportExcel(rows,name){ const ws=XLSX.utils.aoa_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'data'); XLSX.writeFile(wb,name); }
+function exportHistory(){
+  const head=['วันเวลา','รหัสสถานี','ชื่อสถานี','ไซต์','ผู้ตรวจ','ผล','แรงดัน(bar)','ซีล','ของหาย','ระยะ GPS(ม.)','จำนวนรูป','หมายเหตุ'];
+  const rows=[head,...INSPECTIONS.map(i=>[fmt(tsDate(i.createdAt)),i.stationId,i.stationName||'',i.site||'',i.inspectorName||'',
+    i.result==='pass'?'ผ่าน':i.result==='needs_repair'?'ต้องแก้ไข':'ไม่ผ่าน',i.pressureValue??'',i.sealNumber||'',
+    (i.missingItems||[]).map(m=>m.name).join('; '),i.gpsDistanceM??'',(i.photos||[]).length,i.notes||''])];
+  exportExcel(rows,`FHS_inspections_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+function exportCases(){
+  const head=['เลขเคส','รหัสสถานี','ชื่อสถานี','อุปกรณ์','สถานะ','เห็นล่าสุด','โดย','แจ้งหาย','โดย','กล้อง','CCTV เริ่ม','CCTV ถึง','หมายเหตุ'];
+  const sl={investigating:'กำลังสอบสวน',found:'พบแล้ว',replaced:'เปลี่ยนใหม่',closed:'ปิดเคส'};
+  const rows=[head,...CASES.map(c=>[c.id.slice(0,8).toUpperCase(),c.stationId,c.stationName||'',c.itemName||'',sl[c.status]||c.status,
+    c.lastSeenAt?fmt(new Date(c.lastSeenAt)):'',c.lastSeenBy||'',fmt(tsDate(c.reportedMissingAt)),c.reportedBy||'',
+    (c.cctvCameras||[]).join('; '),c.cctvWindow?.start?fmt(new Date(c.cctvWindow.start)):'',c.cctvWindow?.end?fmt(new Date(c.cctvWindow.end)):'',c.notes||''])];
+  exportExcel(rows,`FHS_cases_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ===== INSPECTION PLAN (J7 — รอบ/แผนการตรวจ) ===== */
+function planList(){
+  const site=$('planSite').value, asg=$('planAssignee').value, st=$('planStatus').value;
+  return STATIONS.map(s=>({s,p:planInfo(s)})).filter(({s,p})=>{
+    if(site&&s.site!==site)return false;
+    if(asg==='_none'&&s.assignedTo)return false;
+    if(asg&&asg!=='_none'&&s.assignedTo!==asg)return false;
+    if(st&&p.status!==st)return false;
+    return true;
+  }).sort((a,b)=>{ // worst first: overdue → never → soon → ontrack, then by overBy
+    const rank={overdue:0,never:1,soon:2,ontrack:3};
+    if(rank[a.p.status]!==rank[b.p.status])return rank[a.p.status]-rank[b.p.status];
+    return (b.p.overBy??-999)-(a.p.overBy??-999);
+  });
+}
+function renderPlan(){
+  const all=STATIONS.map(s=>planInfo(s));
+  const overdue=all.filter(p=>p.status==='overdue').length;
+  const soon=all.filter(p=>p.status==='soon').length;
+  const noAsg=STATIONS.filter(s=>!s.assignedTo).length;
+  $('planStats').innerHTML=`
+    <div class="stat ${overdue?'s-red':'s-green'}"><div class="bar"></div><div class="lab">เกินกำหนดตรวจ</div><div class="val">${overdue}</div><div class="sub">ตามรอบของแต่ละสถานี</div></div>
+    <div class="stat ${soon?'s-amber':'s-green'}"><div class="bar"></div><div class="lab">ใกล้ครบกำหนด (≤2 วัน)</div><div class="val">${soon}</div><div class="sub">ควรวางแผนตรวจ</div></div>
+    <div class="stat ${noAsg?'s-amber':'s-navy'}"><div class="bar"></div><div class="lab">ยังไม่มอบหมายผู้ตรวจ</div><div class="val">${noAsg}</div><div class="sub">กำหนดได้ใน Admin</div></div>`;
+  const list=planList(); const tb=$('planBody');
+  if(!list.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">ไม่พบสถานีตามเงื่อนไข</div></td></tr>'; return; }
+  const bc={overdue:'red',soon:'amber',ontrack:'green',never:'gray'};
+  const bl={overdue:'เกินกำหนด',soon:'ใกล้ครบ',ontrack:'ตรงเวลา',never:'ยังไม่เคยตรวจ'};
+  tb.innerHTML=list.map(({s,p})=>`<tr>
+    <td class="mono">${esc(s.id)}<div style="font-size:11px;color:var(--muted)">${esc(s.name||'')}</div></td>
+    <td>${esc(s.site||'')}</td>
+    <td>${s.assignedToName?esc(s.assignedToName):'<span class="badge amber">ยังไม่มอบหมาย</span>'}</td>
+    <td>ทุก ${freqOf(s)} วัน</td>
+    <td style="white-space:nowrap">${fmt(tsDate(s.lastInspectionAt))}</td>
+    <td style="white-space:nowrap">${p.due?fmtD(p.due):'—'}</td>
+    <td><span class="badge ${bc[p.status]}">${bl[p.status]}${p.status==='overdue'?' '+p.overBy+'ว':''}</span></td>
+  </tr>`).join('');
+}
+function exportPlan(){
+  const head=['รหัสสถานี','ชื่อสถานี','ไซต์','ผู้รับผิดชอบ','ความถี่(วัน)','ตรวจล่าสุด','ครบกำหนด','สถานะ'];
+  const bl={overdue:'เกินกำหนด',soon:'ใกล้ครบ',ontrack:'ตรงเวลา',never:'ยังไม่เคยตรวจ'};
+  const rows=[head,...planList().map(({s,p})=>[s.id,s.name||'',s.site||'',s.assignedToName||'(ยังไม่มอบหมาย)',freqOf(s),
+    fmt(tsDate(s.lastInspectionAt)),p.due?fmtD(p.due):'',bl[p.status]+(p.status==='overdue'?` (${p.overBy} วัน)`:'')])];
+  exportExcel(rows,`FHS_plan_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ===== WIRING ===== */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on'); $('page-'+t.dataset.tab).classList.add('on');
+  if(t.dataset.tab==='dash'&&map)setTimeout(()=>map.invalidateSize(),100);
+});
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('on'));
+$('caseFilter').onchange=renderCases;
+['histSearch','histSite','histResult'].forEach(id=>$(id).addEventListener('input',renderHistory));
+$('exportHist').onclick=exportHistory;
+$('exportCases').onclick=exportCases;
+['planSite','planAssignee','planStatus'].forEach(id=>$(id).addEventListener('change',renderPlan));
+$('exportPlan').onclick=exportPlan;
+$('gBtn').onclick=gateLogin;
+$('gPw').addEventListener('keydown',e=>{if(e.key==='Enter')gateLogin();});
+$('logout').onclick=()=>{sessionStorage.removeItem('fhs_admin');location.reload();};
+
+(function(){ const s=sessionStorage.getItem('fhs_admin'); if(s){ ADMIN=JSON.parse(s); boot(); } })();
+</script>
+</body>
+</html>
