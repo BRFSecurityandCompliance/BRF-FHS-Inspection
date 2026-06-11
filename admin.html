@@ -270,7 +270,7 @@ const FIREBASE_CONFIG = {
 
 const app=initializeApp(FIREBASE_CONFIG); const db=getFirestore(app);
 const $=id=>document.getElementById(id);
-const esc=s=>{const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); // escape quotes ด้วย เพราะใช้ใน attribute
 async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 function randSalt(){return [...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');}
 
@@ -531,7 +531,7 @@ $('seedLink').onclick=seedAdmin;
 $('logout').onclick=()=>{sessionStorage.removeItem('fhs_admin');location.reload();};
 
 /* boot */
-(function(){ const s=sessionStorage.getItem('fhs_admin'); if(s){ ADMIN=JSON.parse(s); bootApp(); } })();
+(function(){ let s=null; try{ s=JSON.parse(sessionStorage.getItem('fhs_admin')); }catch(e){} if(s){ ADMIN=s; bootApp(); } })();
 </script>
 </body>
 </html>

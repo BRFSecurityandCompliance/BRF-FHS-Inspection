@@ -161,14 +161,14 @@ const REPORT_BASE_URL = location.href.replace(/report\.html.*$/,'dashboard.html'
 
 const app=initializeApp(FIREBASE_CONFIG); const db=getFirestore(app);
 const $=id=>document.getElementById(id);
-const esc=s=>{const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); // escape quotes ด้วย เพราะใช้ใน attribute
 async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 const tsDate=ts=>ts?(ts.toDate?ts.toDate():new Date(ts)):null;
 const fmtD=d=>d?d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}):'—';
 const fmt=d=>d?d.toLocaleString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
 function weekRange(off=0){ const n=new Date(); const day=(n.getDay()+6)%7; const mon=new Date(n); mon.setDate(n.getDate()-day-off*7); mon.setHours(0,0,0,0); const end=new Date(mon); end.setDate(mon.getDate()+7); return {start:mon,end}; }
 
-let STATIONS=[],INSPECTIONS=[],CASES=[],ADMIN=null,LAST_REPORT=null;
+let STATIONS=[],INSPECTIONS=[],CASES=[],ADMIN=null;
 
 async function gateLogin(){
   const id=$('gId').value.trim().toUpperCase(),pw=$('gPw').value,a=$('gateAlert');a.innerHTML='';
@@ -221,7 +221,7 @@ function delta(now,was,inv=false){
 
 function renderReport(){
   const off=parseInt($('period').value);
-  const R=compute(off); LAST_REPORT=R;
+  const R=compute(off);
   const periodTxt=`${fmtD(R.cur.start)} – ${fmtD(new Date(R.cur.end-1))}`;
 
   let html=`<div class="r-head">
@@ -248,7 +248,7 @@ function renderReport(){
       html+=`<tr><td class="mono">${esc(i.stationId)}</td><td>${esc(i.site||'')}</td><td>${esc(i.inspectorName||'')}</td><td>${fmt(tsDate(i.createdAt))}</td>
         <td class="tag ${i.result}">${i.result==='needs_repair'?'ต้องแก้ไข':'ไม่ผ่าน'}</td>
         <td style="font-size:12px">${esc(probs.join(', ')||'-')}</td>
-        <td><div class="thumbs">${(i.photos||[]).slice(0,3).map(p=>`<img class="thumb" src="${esc(p.url)}" onclick="window.open('${esc(p.url)}','_blank')">`).join('')||'—'}</div></td></tr>`;
+        <td><div class="thumbs">${(i.photos||[]).slice(0,3).map(p=>`<img class="thumb" src="${esc(p.url)}">`).join('')||'—'}</div></td></tr>`;
     });
     html+=`</tbody></table>`;
   } else html+=`<div class="ok-line">✓ ทุกสถานีที่ตรวจในสัปดาห์นี้ผ่านหมด</div>`;
@@ -274,8 +274,8 @@ function renderReport(){
   if(R.cmp.length){
     html+=R.cmp.slice(0,8).map(x=>`<div class="cmp"><div class="ct"><span class="mono">${esc(x.s.id)}</span> ${esc(x.s.name||'')}</div>
       <div class="cmp-grid">
-        <div class="cmp-col"><div class="cl">สัปดาห์ก่อน · ${fmtD(R.prev.start)}</div>${x.prev?`<img src="${esc(x.prev)}" onclick="window.open('${esc(x.prev)}','_blank')">`:'<div class="no">ไม่มีรูป</div>'}</div>
-        <div class="cmp-col"><div class="cl">สัปดาห์นี้ · ${fmtD(R.cur.start)}</div>${x.now?`<img src="${esc(x.now)}" onclick="window.open('${esc(x.now)}','_blank')">`:'<div class="no">ไม่มีรูป</div>'}</div>
+        <div class="cmp-col"><div class="cl">สัปดาห์ก่อน · ${fmtD(R.prev.start)}</div>${x.prev?`<img src="${esc(x.prev)}">`:'<div class="no">ไม่มีรูป</div>'}</div>
+        <div class="cmp-col"><div class="cl">สัปดาห์นี้ · ${fmtD(R.cur.start)}</div>${x.now?`<img src="${esc(x.now)}">`:'<div class="no">ไม่มีรูป</div>'}</div>
       </div></div>`).join('');
     html+=`<p class="hint">ใช้เทียบสภาพตู้/สาย/หัวฉีด ดูการเปลี่ยนแปลงหรือสิ่งผิดปกติระหว่างสัปดาห์</p>`;
   } else html+=`<div class="empty">ยังไม่มีสถานีที่ตรวจทั้งสองสัปดาห์เพื่อเทียบรูป</div>`;
@@ -285,6 +285,8 @@ function renderReport(){
     สร้างโดยระบบ FHS Inspection · ${esc(ADMIN.name)} · ${new Date().toLocaleString('th-TH')}</div>`;
 
   $('report').innerHTML=html;
+  // เปิดรูปผ่าน listener ไม่ใช่ inline onclick — กัน JS-string injection จาก URL ในฐานข้อมูล
+  $('report').querySelectorAll('img.thumb,.cmp-col img').forEach(im=>im.onclick=()=>window.open(im.src,'_blank'));
 }
 
 /* ====== build email HTML per site (E4) ====== */
@@ -348,7 +350,7 @@ $('btnSend').onclick=sendEmail;
 $('gBtn').onclick=gateLogin;
 $('gPw').addEventListener('keydown',e=>{if(e.key==='Enter')gateLogin();});
 $('logout').onclick=()=>{sessionStorage.removeItem('fhs_admin');location.reload();};
-(function(){ const s=sessionStorage.getItem('fhs_admin'); if(s){ ADMIN=JSON.parse(s); boot(); } })();
+(function(){ let s=null; try{ s=JSON.parse(sessionStorage.getItem('fhs_admin')); }catch(e){} if(s){ ADMIN=s; boot(); } })();
 </script>
 </body>
 </html>

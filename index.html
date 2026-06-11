@@ -230,7 +230,7 @@ textarea{resize:vertical;min-height:74px}
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, serverTimestamp, increment, enableIndexedDbPersistence, Timestamp }
+import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, serverTimestamp, enableIndexedDbPersistence, Timestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 /* ============== CONFIG — กรอกค่าของคุณ ============== */
@@ -277,7 +277,7 @@ let gps = {lat:null,lng:null,distance:null,ok:false};
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
-const esc = s => { const d=document.createElement('div'); d.textContent = s==null?'':String(s); return d.innerHTML; }; // XSS (I3)
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); // XSS (I3) — ต้อง escape เครื่องหมายคำพูดด้วย เพราะใช้ใน attribute
 function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on')); $(id).classList.add('on'); window.scrollTo(0,0); }
 async function sha256(str){ const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
 function haversine(a,b,c,d){ const R=6371000,t=x=>x*Math.PI/180; const dLat=t(c-a),dLng=t(d-b); const h=Math.sin(dLat/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(dLng/2)**2; return Math.round(R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))); }
@@ -467,9 +467,9 @@ function enterInspection(){
   $('photoInput').addEventListener('change', handlePhotos);
   $('btnSubmit').addEventListener('click', submitInspection);
   $('btnCancel').addEventListener('click', ()=>location.href=location.pathname);
-  initSignature();
 
   show('scrInspect');
+  initSignature(); // ต้อง init หลังหน้าจอแสดงผลแล้ว ไม่งั้น canvas วัดขนาดได้ 0×0 เซ็นไม่ติด
   captureGPS();
 }
 
@@ -610,33 +610,39 @@ async function submitInspection(){
       sealNumber: $('sealNo').value.trim(), photos, signatureUrl, result, equipmentSnapshot, missingItems,
       notes: $('notes').value.trim(), createdAt:serverTimestamp()
     };
-    const ref = await addDoc(collection(db,'inspections'), insp);
-
     // update station: lastSeen for present items (D2), status of all items, lastInspection
     const updatedEquipment=(CURRENT_STATION.equipment||[]).map(e=>{
       const st=eqState[e.id]||'present'; const o={...e,status:st};
       if(st==='present'){ o.lastSeenAt=new Date().toISOString(); o.lastSeenBy=CURRENT_USER.name; }
       return o;
     });
-    await updateDoc(doc(db,'stations',CURRENT_STATION.id),{
-      equipment:updatedEquipment, lastInspectionAt:serverTimestamp(), lastResult:result
-    });
 
-    // auto-create CCTV cases for missing items (bridge to D3/D4)
-    for(const m of missingItems){
-      const prev=(CURRENT_STATION.equipment||[]).find(e=>e.id===m.id)||{};
-      await addDoc(collection(db,'cases'),{
-        stationId:CURRENT_STATION.id, stationName:CURRENT_STATION.name||'',
-        itemId:m.id, itemName:m.name,
-        lastSeenAt: prev.lastSeenAt||null, lastSeenBy: prev.lastSeenBy||null,
-        reportedMissingAt:serverTimestamp(), reportedBy:CURRENT_USER.name,
-        cctvCameras: CURRENT_STATION.cctvCameras||[],
-        cctvWindow:{ start: prev.lastSeenAt||null, end:new Date().toISOString() },
-        status:'investigating', notes:'', createdAt:serverTimestamp()
+    const inspRef = doc(collection(db,'inspections'));
+    const writeAll = async ()=>{
+      await setDoc(inspRef, insp);
+      await updateDoc(doc(db,'stations',CURRENT_STATION.id),{
+        equipment:updatedEquipment, lastInspectionAt:serverTimestamp(), lastResult:result
       });
-    }
+      // auto-create CCTV cases for missing items (bridge to D3/D4)
+      for(const m of missingItems){
+        const prev=(CURRENT_STATION.equipment||[]).find(e=>e.id===m.id)||{};
+        await addDoc(collection(db,'cases'),{
+          stationId:CURRENT_STATION.id, stationName:CURRENT_STATION.name||'',
+          itemId:m.id, itemName:m.name,
+          lastSeenAt: prev.lastSeenAt||null, lastSeenBy: prev.lastSeenBy||null,
+          reportedMissingAt:serverTimestamp(), reportedBy:CURRENT_USER.name,
+          cctvCameras: CURRENT_STATION.cctvCameras||[],
+          cctvWindow:{ start: prev.lastSeenAt||null, end:new Date().toISOString() },
+          status:'investigating', notes:'', createdAt:serverTimestamp()
+        });
+      }
+    };
+    // ออฟไลน์: promise ของ Firestore จะค้างจนกว่า server ตอบ — ไม่ await เพื่อไม่ให้ปุ่มหมุนค้าง
+    // (Firestore persistence คิว write ไว้และซิงค์เองเมื่อมีเน็ต — A7)
+    if(navigator.onLine) await writeAll();
+    else writeAll().catch(()=>{});
 
-    renderSuccess(ref.id, result, missingItems);
+    renderSuccess(inspRef.id, result, missingItems);
   }catch(e){
     submitting=false; btn.disabled=false; btn.innerHTML='บันทึกผลการตรวจ';
     alertBox.innerHTML=`<div class="alert err">บันทึกไม่สำเร็จ: ${esc(e.message)} (ข้อมูลจะถูกซิงค์อัตโนมัติเมื่อมีเน็ต)</div>`;
@@ -663,28 +669,34 @@ function renderSuccess(id,result,missing){
 }
 
 /* ============ QR SCANNER ============ */
-let scanner=null;
+let scanner=null, scanHandled=false;
 function startScan(){
   $('btnStartScan').style.display='none'; $('scanArea').style.display='block';
+  scanHandled=false;
   scanner=new Html5Qrcode('reader');
   scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:230,height:230}},onScan,()=>{})
     .catch(()=>{ $('scanArea').innerHTML='<div class="alert warn">ไม่สามารถเปิดกล้องได้ โปรดอนุญาตการเข้าถึงกล้อง หรือพิมพ์รหัสสถานีด้านล่าง</div>'; $('btnStartScan').style.display='flex'; });
 }
 function onScan(text){
+  if(scanHandled) return; scanHandled=true; // กล้องอาจยิง callback ซ้ำหลายเฟรมก่อน stop เสร็จ
   let sid=text.trim();
   try{ const u=new URL(text); sid=u.searchParams.get('station')||sid; }catch(e){}
   if(scanner){ scanner.stop().catch(()=>{}); }
   goToStation(sid.toUpperCase());
 }
+function savedUser(){ try{ return JSON.parse(sessionStorage.getItem('fhs_user')); }catch(e){ return null; } }
+function backToScan(msg){ show('scrScan'); $('scanArea').style.display='none'; $('btnStartScan').style.display='flex'; alert(msg); }
 async function goToStation(sid){
   if(!sid) return;
   show('scrLoading');
-  const st=await loadStation(sid);
-  if(!st){ show('scrScan'); $('scanArea').style.display='none'; $('btnStartScan').style.display='flex'; alert('ไม่พบสถานี '+sid+' ในระบบ'); return; }
+  let st;
+  try{ st=await loadStation(sid); }
+  catch(e){ backToScan('โหลดข้อมูลสถานีไม่สำเร็จ: '+e.message); return; }
+  if(!st){ backToScan('ไม่พบสถานี '+sid+' ในระบบ'); return; }
   CURRENT_STATION=st;
   // already logged in?
-  const saved=sessionStorage.getItem('fhs_user');
-  if(saved){ CURRENT_USER=JSON.parse(saved); renderWho(); enterInspection(); }
+  const saved=savedUser();
+  if(saved){ CURRENT_USER=saved; renderWho(); enterInspection(); }
   else{ $('loginStationHint').innerHTML=`ตรวจสถานี <b class="mono">${esc(st.id)}</b>`; show('scrLogin'); }
 }
 
@@ -717,7 +729,7 @@ if('NDEFReader' in window){
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 
 (function init(){
-  const saved=sessionStorage.getItem('fhs_user'); if(saved){ CURRENT_USER=JSON.parse(saved); renderWho(); }
+  const saved=savedUser(); if(saved){ CURRENT_USER=saved; renderWho(); }
   const sid=new URLSearchParams(location.search).get('station');
   if(sid){ goToStation(sid.toUpperCase()); }
   else{ show('scrScan'); }
