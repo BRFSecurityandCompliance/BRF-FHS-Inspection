@@ -345,11 +345,11 @@ function captureGPS(){
       gps.distance = haversine(gps.lat,gps.lng,CURRENT_STATION.gps.lat,CURRENT_STATION.gps.lng);
       gps.ok = gps.distance <= GPS_WARN_METERS;
       el.className = gps.ok?'gps ok':'gps warn';
-      el.innerHTML = `<span class="dot"></span>${gps.ok?'อยู่ที่สถานี':'⚠ ห่างจากสถานี'} · ${gps.distance} ม.`;
+      el.innerHTML = `<span class="dot"></span>${gps.ok?'อยู่ที่สถานี':'⚠ ห่างจากสถานี (บันทึกไม่ได้)'} · ${gps.distance} ม.`;
     }else{
       gps.ok=true; el.className='gps ok'; el.innerHTML='<span class="dot"></span>บันทึกพิกัดแล้ว (สถานียังไม่ตั้งพิกัดอ้างอิง)';
     }
-  },()=>{ el.className='gps warn'; el.innerHTML='<span class="dot"></span>⚠ ไม่สามารถเข้าถึง GPS — ตรวจต่อได้แต่ไม่มีพิกัดยืนยัน'; },{enableHighAccuracy:true,timeout:10000});
+  },()=>{ el.className='gps warn'; el.innerHTML='<span class="dot"></span>⚠ เข้าถึง GPS ไม่ได้ — เปิด GPS/อนุญาตตำแหน่งเพื่อบันทึก'; },{enableHighAccuracy:true,timeout:10000});
 }
 
 /* ============ RENDER INSPECTION FORM ============ */
@@ -570,6 +570,11 @@ async function submitInspection(){
   const errs=[];
 
   // validation (I4)
+  // GPS gate (A5) — ต้องอยู่ในระยะที่กำหนดจากสถานี ถึงจะบันทึกได้
+  if(!gps.ok){
+    if(gps.distance!=null) errs.push(`อยู่นอกระยะที่กำหนด — ห่างจากสถานี ${gps.distance} ม. (ต้องไม่เกิน ${GPS_WARN_METERS} ม.) ไปยืนใกล้สถานีแล้วลองใหม่`);
+    else errs.push(`ยืนยันตำแหน่งไม่สำเร็จ — เปิด GPS / อนุญาตการเข้าถึงตำแหน่ง แล้วรอสักครู่ก่อนกดบันทึก (ต้องอยู่ในระยะ ${GPS_WARN_METERS} ม. จากสถานี)`);
+  }
   const unset = CHECKLIST.filter(c=>!clState[c.code]?.status);
   if(unset.length) errs.push(`ยังตรวจไม่ครบ: ${unset.map(c=>c.code).join(', ')}`);
   const eqTotal=(CURRENT_STATION.equipment||[]).length;
